@@ -6,7 +6,8 @@
  * slots computed from the Mifflin-St Jeor equation. Nothing is authored here.
  */
 
-import { Recipe, getRecipe, idsInCategory } from "./mealdb";
+import { canonicalCuisine } from "@/data/cuisines";
+import { Recipe, getRecipe, idsInArea, idsInCategory } from "./mealdb";
 import { CostedRecipe, costRecipes, isUsable, portionFor } from "./nutrition";
 import { Profile } from "./types";
 
@@ -22,8 +23,13 @@ const MEAT_TOKENS = [
   "gelatin", "lard", "chorizo", "pepperoni", "mince",
 ];
 
-/** How many candidates to pull. Enough for a varied week without hammering the APIs. */
-const POOL_SIZE = 34;
+/**
+ * How many candidates to pull. Wider than a bare "week of variety" would need, because
+ * protein-adequacy also depends on having enough distinct protein-dense options that a
+ * repeat-avoidance penalty doesn't force the picker back onto weaker dishes later in
+ * the week.
+ */
+const POOL_SIZE = 50;
 
 function shuffle<T>(xs: T[]): T[] {
   const a = [...xs];
@@ -45,6 +51,10 @@ export function excludedTokens(p: Profile): string[] {
     .split(/[,;/]+/)
     .map((s) => s.trim())
     .filter((s) => s.length >= 3);
+}
+
+export function favoriteCuisines(p: Profile): string[] {
+  return (p.favoriteCuisines ?? []).filter(Boolean);
 }
 
 /** A recipe is rejected if any ingredient matches an excluded token. Conservative by design. */
@@ -88,6 +98,7 @@ function poolKey(p: Profile): string {
   return JSON.stringify({
     veg: wantsVegetarian(p),
     tokens: excludedTokens(p).sort(),
+    fav: favoriteCuisines(p).slice().sort(),
   });
 }
 
@@ -118,17 +129,25 @@ async function researchPool(p: Profile): Promise<CandidatePool> {
   const tokens = excludedTokens(p);
 
   const mainCats = vegetarian ? VEG_CATEGORIES : MAIN_CATEGORIES;
-  const [breakfastIds, mainIds, lightIds] = await Promise.all([
+  const favorites = favoriteCuisines(p);
+  const [breakfastIds, mainIds, lightIds, favoriteIds] = await Promise.all([
     idsFor(BREAKFAST_CATEGORIES),
     idsFor(mainCats),
     idsFor(LIGHT_CATEGORIES),
+    // pull extra recipes straight from the favourite cuisines so they're actually
+    // in the pool to be preferred later — best-effort, empty if the area has none
+    Promise.all(favorites.map((a) => idsInArea(a).catch(() => [] as string[]))).then((l) =>
+      l.flat(),
+    ),
   ]);
 
-  // take a random slice so repeat generations don't produce the same week
+  // take a random slice so repeat generations don't produce the same week;
+  // favourite-cuisine recipes are added on top so they have a real chance to appear
   const wanted = [
-    ...shuffle(breakfastIds).slice(0, 10),
+    ...shuffle(favoriteIds).slice(0, 20),
+    ...shuffle(breakfastIds).slice(0, 18),
     ...shuffle(mainIds).slice(0, POOL_SIZE),
-    ...shuffle(lightIds).slice(0, 12),
+    ...shuffle(lightIds).slice(0, 20),
   ];
 
   const recipes = (
@@ -147,12 +166,24 @@ async function researchPool(p: Profile): Promise<CandidatePool> {
 
 /**
  * Pick the recipe whose portion lands closest to the calorie slot, preferring ones
- * we haven't used recently so a week doesn't repeat the same dish.
+ * we haven't used recently so a week doesn't repeat the same dish, and preferring
+ * protein-dense recipes when the day needs more protein per calorie than a dish offers.
  */
 export function pick(
   candidates: CostedRecipe[],
   targetKcal: number,
   usedIds: Set<string>,
+  /** cuisines already used recently — repeats are penalized so the week mixes cultures */
+  usedAreas?: Set<string>,
+  /** canonical cuisine keys the user favours — rewarded so their week leans that way */
+  favoredAreas?: Set<string>,
+  /**
+   * g of protein needed per kcal, e.g. dailyProteinG / dailyCalories. Recipes whose own
+   * protein-per-kcal falls short of this are penalized — otherwise the calorie-fit-only
+   * search happily fills every slot with bread-and-potato dishes that hit calories while
+   * leaving the day's protein target far short (this is what "pick" used to do).
+   */
+  targetProteinDensity?: number,
 ): { costed: CostedRecipe; portions: number } | null {
   const options: { costed: CostedRecipe; portions: number; penalty: number }[] = [];
 
@@ -161,8 +192,32 @@ export function pick(
     if (portions === null) continue;
     // prefer a portion near one serving — a recipe you eat 2.4x of is a stretch
     const stretch = Math.abs(portions - 1);
-    const reuse = usedIds.has(c.recipe.id) ? 10 : 0;
-    options.push({ costed: c, portions, penalty: stretch + reuse });
+    // Variety matters, but not more than actually hitting the protein target — a repeat
+    // that keeps the day on track beats a novel dish that leaves it well short.
+    const reuse = usedIds.has(c.recipe.id) ? 3 : 0;
+    // a soft nudge, not a ban: a repeated cuisine costs less than a badly-scaled portion,
+    // so we still fill the slot with a real dish when one cuisine is all that fits
+    const sameCuisine = usedAreas?.has(c.recipe.area) ? 0.6 : 0;
+    // reward a favourite cuisine — strong enough to surface it, not so strong it
+    // overrides portion fit or floods the week with one culture
+    const favored =
+      favoredAreas && favoredAreas.size > 0
+        ? favoredAreas.has(canonicalCuisine(c.recipe.area) ?? "")
+          ? -0.8
+          : 0
+        : 0;
+    // protein density (g/kcal) is portion-invariant — scaling the serving scales both
+    // protein and calories together, so this ratio describes the recipe itself
+    const density = c.perServing.kcal > 0 ? c.perServing.proteinG / c.perServing.kcal : 0;
+    const proteinShortfall =
+      targetProteinDensity !== undefined
+        ? Math.max(0, targetProteinDensity - density) * 150
+        : 0;
+    options.push({
+      costed: c,
+      portions,
+      penalty: stretch + reuse + sameCuisine + favored + proteinShortfall,
+    });
   }
 
   if (options.length === 0) return null;

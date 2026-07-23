@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { DAY_NAMES, clampMeals, computeTargets } from "@/lib/plan";
 import { toMeal } from "@/lib/nutrition";
-import { buildPool, pick } from "@/lib/select";
+import { buildPool, favoriteCuisines, pick } from "@/lib/select";
+import { canonicalCuisine } from "@/data/cuisines";
 import { DayPlan, DietPlan, Meal, Profile, Targets } from "@/lib/types";
 
 /**
@@ -54,14 +55,39 @@ async function buildPlan(p: Profile, t: Targets): Promise<DietPlan> {
   const slots = slotWeights(mealsPerDay);
   const totalWeight = slots.reduce((s, x) => s + x.weight, 0);
   const usedIds = new Set<string>();
+  // favourites resolved to canonical cuisine keys for matching against recipe areas
+  const favored = new Set(
+    favoriteCuisines(p)
+      .map((a) => canonicalCuisine(a))
+      .filter((a): a is string => a !== null),
+  );
   const days: DayPlan[] = [];
   let unfilled = 0;
 
+  // How much of the day's weighted calories are still ahead, at and after each slot —
+  // used to turn "protein left to hit today" into a per-slot target as the day goes.
+  const suffixWeight: number[] = new Array(slots.length);
+  for (let i = slots.length - 1, acc = 0; i >= 0; i--) {
+    acc += slots[i].weight;
+    suffixWeight[i] = acc;
+  }
+
   for (const day of DAY_NAMES) {
     const meals: Meal[] = [];
+    // cuisines used within this day — reset daily so each day is a mix, but a
+    // cuisine can still recur across the week
+    const dayAreas = new Set<string>();
+    // protein still owed today. Whatever an earlier slot falls short by (a protein-light
+    // breakfast, say) raises the bar for the slots after it, instead of the shortfall
+    // just persisting to the end of the day uncorrected.
+    let proteinOwed = t.proteinG;
 
-    for (const slot of slots) {
+    for (let si = 0; si < slots.length; si++) {
+      const slot = slots[si];
       const targetKcal = (t.dailyCalories * slot.weight) / totalWeight;
+      // this slot's share of whatever protein is still owed, spread over the slots left
+      const slotProteinTarget = proteinOwed * (slot.weight / suffixWeight[si]);
+      const targetProteinDensity = targetKcal > 0 ? slotProteinTarget / targetKcal : undefined;
 
       // fall back through the pools rather than leave a hole: a light dish scaled up
       // is still a real dish, whereas an invented one is not.
@@ -74,18 +100,22 @@ async function buildPlan(p: Profile, t: Targets): Promise<DietPlan> {
 
       let chosen: ReturnType<typeof pick> = null;
       for (const candidates of order) {
-        chosen = pick(candidates, targetKcal, usedIds);
+        chosen = pick(candidates, targetKcal, usedIds, dayAreas, favored, targetProteinDensity);
         if (chosen) break;
       }
       // No real recipe fits this slot. Leave it empty and say so — never pad the day
-      // with an invented meal to make the arithmetic look tidy.
+      // with an invented meal to make the arithmetic look tidy. The protein it would
+      // have carried stays "owed", pushing harder on whatever slots remain.
       if (!chosen) {
         unfilled++;
         continue;
       }
 
       usedIds.add(chosen.costed.recipe.id);
-      meals.push(toMeal(chosen.costed, chosen.portions));
+      if (chosen.costed.recipe.area) dayAreas.add(chosen.costed.recipe.area);
+      const meal = toMeal(chosen.costed, chosen.portions);
+      proteinOwed -= meal.proteinG;
+      meals.push(meal);
     }
 
     if (meals.length === 0) {
@@ -125,7 +155,7 @@ function buildWarning(
 function buildTips(t: Targets, coverage: number): string[] {
   return [
     `Your ${t.dailyCalories.toLocaleString()} kcal target is your Mifflin-St Jeor basal rate, multiplied by your activity level and adjusted for the gap between your current and goal weight.`,
-    `Protein is set at 1.6 g per kg of your goal weight (${t.proteinG} g/day).`,
+    `Protein is set at ${t.proteinG} g/day, scaled to your weight and raised when cutting or bulking to protect muscle.`,
     `Every calorie and protein figure is summed from USDA FoodData Central measurements of each ingredient — ${Math.round(
       coverage * 100,
     )}% of ingredients across this plan were matched to a USDA entry.`,

@@ -51,7 +51,16 @@ async function findMeal(b: RerollBody): Promise<{ meal: Meal | null; poolSize: n
   );
   const fresh = candidates.filter((c) => !shown.has(c.recipe.name.toLowerCase()));
 
-  const chosen = pick(fresh.length ? fresh : candidates, b.target.calories, new Set());
+  // match this one meal's own protein-per-calorie ask, not just its calories
+  const targetProteinDensity = b.target.calories > 0 ? b.target.proteinG / b.target.calories : undefined;
+  const chosen = pick(
+    fresh.length ? fresh : candidates,
+    b.target.calories,
+    new Set(),
+    undefined,
+    undefined,
+    targetProteinDensity,
+  );
   return {
     meal: chosen ? toMeal(chosen.costed, chosen.portions) : null,
     poolSize: candidates.length,

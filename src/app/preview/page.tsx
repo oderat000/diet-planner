@@ -14,31 +14,17 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+import { useT } from "@/lib/i18n";
 
 const ABILITIES = [
-  {
-    icon: AutoAwesomeIcon,
-    title: "AI-generated 7-day plan",
-    text: "A free AI agent builds a full week of meals from your age, height, weight, activity level, goal, dietary preferences and allergies — no account, no API key, no cost.",
-  },
-  {
-    icon: ChecklistIcon,
-    title: "Daily meal tracking",
-    text: "Check off each meal as you eat it and watch the calorie progress bar fill toward your personal daily target.",
-  },
-  {
-    icon: ShowChartIcon,
-    title: "Weight progress chart",
-    text: "Log your weight each day and see the trend against your goal line — hover any point for the exact value.",
-  },
-  {
-    icon: LockOpenIcon,
-    title: "Private by design",
-    text: "Everything is stored locally in your browser. No sign-up, no server database, your data never leaves your device.",
-  },
-];
+  { icon: AutoAwesomeIcon, key: "plan" },
+  { icon: ChecklistIcon, key: "track" },
+  { icon: ShowChartIcon, key: "chart" },
+  { icon: LockOpenIcon, key: "private" },
+] as const;
 
 export default function Preview() {
+  const t = useT();
   const [index, setIndex] = React.useState(0);
   const count = ABILITIES.length;
 
@@ -65,9 +51,7 @@ export default function Preview() {
           Diet Planner
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
-          A personal diet plan written by a free AI agent —
-          <br />
-          with daily meal tracking and a weight progress chart.
+          {t("landing.tagline")}
         </Typography>
       </Box>
 
@@ -99,10 +83,10 @@ export default function Preview() {
         <Box sx={{ minHeight: 168, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <Icon color="primary" sx={{ fontSize: 40, mb: 1.5, mx: "auto" }} />
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-            {ability.title}
+            {t(`landing.${ability.key}.title`)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {ability.text}
+            {t(`landing.${ability.key}.text`)}
           </Typography>
         </Box>
 
@@ -123,10 +107,10 @@ export default function Preview() {
         <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 2.5 }}>
           {ABILITIES.map((a, i) => (
             <Box
-              key={a.title}
+              key={a.key}
               onClick={() => setIndex(i)}
               role="button"
-              aria-label={`Show ${a.title}`}
+              aria-label={t(`landing.${a.key}.title`)}
               sx={{
                 width: 8,
                 height: 8,
@@ -142,7 +126,7 @@ export default function Preview() {
 
       {/* CTA */}
       <Button component={Link} href="/create" variant="contained" size="large">
-        Create my plan
+        {t("landing.cta")}
       </Button>
     </Box>
   );

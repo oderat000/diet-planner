@@ -19,6 +19,8 @@ export interface Profile {
   allergies: string;
   /** optional — absent on plans saved before this field existed */
   healthNotes?: string;
+  /** cuisines the user enjoys, by TheMealDB area name; plans lean toward these */
+  favoriteCuisines?: string[];
   mealsPerDay: number;
 }
 
@@ -65,6 +67,11 @@ export interface Meal {
   imageUrl?: string;
   videoUrl?: string | null;
   sourceUrl?: string | null;
+
+  /** cuisine of origin, as published (TheMealDB `area`), e.g. "Italian" */
+  origin?: string;
+  /** dish category, as published (TheMealDB `category`), e.g. "Pasta" */
+  category?: string;
 
   /** how much of one recipe's serving this portion is */
   portions?: number;

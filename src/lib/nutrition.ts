@@ -128,6 +128,8 @@ export function toMeal(c: CostedRecipe, portions: number): Meal {
   return {
     name: recipe.name,
     description: [recipe.area, recipe.category].filter(Boolean).join(" · "),
+    origin: recipe.area || undefined,
+    category: recipe.category || undefined,
     calories: Math.round(perServing.kcal * portions),
     proteinG: Math.round(perServing.proteinG * portions),
     carbsG: Math.round(perServing.carbsG * portions),

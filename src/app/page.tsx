@@ -28,10 +28,12 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ReplayIcon from "@mui/icons-material/Replay";
 import MealCard from "@/components/MealCard";
+import NutritionTools from "@/components/NutritionTools";
 import StatTile from "@/components/StatTile";
 import WeightChart from "@/components/WeightChart";
 import Preview from "@/app/preview/page";
 import { buildGroceryList, formatGrams } from "@/lib/grocery";
+import { useI18n } from "@/lib/i18n";
 import { deriveGoal } from "@/lib/plan";
 import {
   deletePlan,
@@ -61,6 +63,8 @@ export default function Home() {
   const [weekOpen, setWeekOpen] = React.useState(false);
   const [groceryOpen, setGroceryOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+
+  const { lang } = useI18n();
 
   React.useEffect(() => {
     setStore(loadStore());
@@ -307,6 +311,24 @@ export default function Home() {
           <LinearProgress variant="determinate" value={pct} sx={{ height: 8, borderRadius: 4 }} />
         </Box>
       </Paper>
+
+      {/* AI add-ons: check a home-cooked dish, and ask about the plan */}
+      <NutritionTools
+        context={{
+          goal,
+          dailyCalories: plan.dailyCalories,
+          proteinG: plan.macros.proteinG,
+          carbsG: plan.macros.carbsG,
+          fatG: plan.macros.fatG,
+          todayDay: dayPlan.day,
+          todayMeals: dayPlan.meals.map((m) => ({
+            name: m.name,
+            calories: m.calories,
+            proteinG: m.proteinG,
+          })),
+          language: lang,
+        }}
+      />
 
       {/* weight progress */}
       <Paper variant="outlined" sx={{ p: 3 }}>

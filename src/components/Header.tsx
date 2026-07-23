@@ -7,11 +7,15 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ButtonBase from "@mui/material/ButtonBase";
+import Box from "@mui/material/Box";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useT } from "@/lib/i18n";
 import { getActivePlan, loadStore, STORE_EVENT } from "@/lib/storage";
 
 export default function Header() {
   const pathname = usePathname();
+  const t = useT();
   const [hasPlan, setHasPlan] = React.useState(false);
 
   React.useEffect(() => {
@@ -42,7 +46,7 @@ export default function Header() {
           <ButtonBase
             component={Link}
             href="/preview"
-            aria-label="About Diet Planner"
+            aria-label={t("nav.about")}
             sx={{ borderRadius: 1, px: 1, py: 0.5 }}
           >
             <RestaurantIcon sx={{ mr: 1, color: "primary.main" }} />
@@ -51,6 +55,8 @@ export default function Header() {
             </Typography>
           </ButtonBase>
         )}
+        <Box sx={{ flexGrow: 1 }} />
+        <LanguageSwitcher />
       </Toolbar>
     </AppBar>
   );

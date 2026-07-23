@@ -17,7 +17,10 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlined";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import ReplayIcon from "@mui/icons-material/Replay";
+import PublicIcon from "@mui/icons-material/Public";
+import { cuisineFor } from "@/data/cuisines";
 import { Meal } from "@/lib/types";
+import type { SxProps, Theme } from "@mui/material/styles";
 
 function Photo({ meal, width, height }: { meal: Meal; width: number; height: number }) {
   if (!meal.imageUrl) {
@@ -56,6 +59,61 @@ function Photo({ meal, width, height }: { meal: Meal; width: number; height: num
         sizes={`${width}px`}
         style={{ objectFit: "cover" }}
       />
+    </Box>
+  );
+}
+
+/**
+ * Origin, definition and taste for a dish — shown under its photo.
+ * Origin always comes straight from the recipe (real). The definition and taste come
+ * from the cuisine reference, which is Wikipedia-sourced; when a cuisine isn't in that
+ * reference we show origin alone rather than invent a description.
+ */
+function CuisineNote({ meal, sx }: { meal: Meal; sx?: SxProps<Theme> }) {
+  if (!meal.origin) return null;
+  const cuisine = cuisineFor(meal.origin);
+
+  return (
+    <Box sx={{ ...sx }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+        <PublicIcon fontSize="inherit" sx={{ color: "text.secondary" }} />
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {meal.origin}
+          {meal.category ? (
+            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+              {meal.category}
+            </Typography>
+          ) : null}
+        </Typography>
+      </Box>
+
+      {cuisine ? (
+        <>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {cuisine.definition}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 0.5 }}>
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              Taste:
+            </Box>{" "}
+            {cuisine.taste}
+          </Typography>
+          <Typography
+            variant="caption"
+            component="a"
+            href={cuisine.source}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: "text.secondary", textDecoration: "underline" }}
+          >
+            Cuisine description from Wikipedia
+          </Typography>
+        </>
+      ) : (
+        <Typography variant="caption" color="text.secondary">
+          Origin as published by the recipe source.
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -247,7 +305,7 @@ export default function MealCard({
             )}
           </Box>
 
-          {/* right: the plated dish, larger */}
+          {/* right: the plated dish, larger, with its cuisine beneath */}
           <Box sx={{ display: { xs: "none", md: "block" } }}>
             <Photo meal={meal} width={240} height={170} />
             {meal.carbsG !== undefined && meal.fatG !== undefined && (
@@ -256,7 +314,13 @@ export default function MealCard({
                 <Chip size="small" variant="outlined" label={`${meal.fatG} g fat`} />
               </Box>
             )}
+            <CuisineNote meal={meal} sx={{ mt: 1.5 }} />
           </Box>
+        </Box>
+
+        {/* on narrow screens the right column is hidden — show the cuisine inline */}
+        <Box sx={{ display: { xs: "block", md: "none" }, mt: 2 }}>
+          <CuisineNote meal={meal} />
         </Box>
         </Box>
       </Collapse>

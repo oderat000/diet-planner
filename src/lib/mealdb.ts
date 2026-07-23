@@ -107,6 +107,22 @@ export function idsInCategory(category: string): Promise<string[]> {
   return hit;
 }
 
+const areaCache = new Map<string, Promise<string[]>>();
+
+/** Recipe ids from a cuisine/area, e.g. "Italian", "Japanese". Best-effort. */
+export function idsInArea(area: string): Promise<string[]> {
+  let hit = areaCache.get(area);
+  if (!hit) {
+    hit = (async () => {
+      const data = await get(`filter.php?a=${encodeURIComponent(area)}`);
+      return (data?.meals ?? []).map((m: any) => String(m.idMeal));
+    })();
+    hit.catch(() => areaCache.delete(area));
+    areaCache.set(area, hit);
+  }
+  return hit;
+}
+
 export async function categories(): Promise<string[]> {
   const data = await get("categories.php");
   return (data?.categories ?? []).map((c: any) => String(c.strCategory));

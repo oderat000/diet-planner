@@ -41,6 +41,35 @@ export function deriveGoal(p: Profile): Goal {
   return "maintain";
 }
 
+/** Grams of protein per kg of reference weight, by goal. */
+const PROTEIN_PER_KG: Record<Goal, number> = {
+  // a calorie deficit needs more protein per kg to preserve muscle (1.6–2.2 g/kg range)
+  lose: 1.8,
+  maintain: 1.6,
+  // a surplus for muscle gain also benefits from the higher end
+  gain: 1.8,
+};
+
+/**
+ * Reference weight for dosing protein.
+ *
+ * Protein is prescribed per kg of body weight, but needs don't scale 1:1 with fat mass, so
+ * for someone well above their goal the clinical practice is "adjusted body weight":
+ * ideal + 0.25 × (current − ideal). We use the goal weight as the ideal proxy. At or below
+ * goal we just use current weight. Either way the figure moves with current weight — which
+ * a flat goal-weight formula never did.
+ */
+export function proteinReferenceKg(p: Profile): number {
+  const current = p.weightKg;
+  const ideal = p.goalWeightKg;
+  if (current <= ideal) return current;
+  return ideal + 0.25 * (current - ideal);
+}
+
+export function proteinTargetG(p: Profile): number {
+  return Math.round(PROTEIN_PER_KG[deriveGoal(p)] * proteinReferenceKg(p));
+}
+
 /**
  * Mifflin-St Jeor BMR -> TDEE -> goal-adjusted calorie and macro targets.
  * A published equation applied to the user's own numbers — the one piece of this
@@ -60,7 +89,7 @@ export function computeTargets(p: Profile): Targets {
   if (goal === "gain") calories = tdee + 300;
   calories = Math.round(calories / 10) * 10;
 
-  const proteinG = Math.round(1.6 * p.goalWeightKg);
+  const proteinG = proteinTargetG(p);
   const fatG = Math.round((calories * 0.25) / 9);
   const carbsG = Math.round((calories - proteinG * 4 - fatG * 9) / 4);
   return { dailyCalories: calories, proteinG, carbsG, fatG };
