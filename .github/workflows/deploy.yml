@@ -23,13 +23,17 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # Static export can't ship API routes (they need a server), and the Gemini-backed
+      # ones live on Vercel instead — see .github/workflows note in README/AGENTS for setup.
+      - run: rm -rf src/app/api
       - run: npm ci
       - run: npm run build
         env:
           GITHUB_PAGES: "true"
-          # Set NEXT_PUBLIC_GEMINI_API_KEY as a repo secret to enable the optional
-          # AI add-ons (dish photo check + Q&A). It ships in the client bundle either way.
-          NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.NEXT_PUBLIC_GEMINI_API_KEY }}
+          # Base URL of the Vercel deployment that serves /api/analyze-dish and /api/ask.
+          # Set this as an Actions repo *variable* (not secret — it ends up in the client
+          # bundle regardless, it's just a URL). Leave unset to disable the AI add-ons.
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

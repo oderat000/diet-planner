@@ -5,6 +5,10 @@ import { DishIngredientInput, DishNutrition, costDish, parseIngredientLines } fr
  * Estimate the nutrition of a dish the user prepared, from a photo and/or a text
  * description. Gemini recognises the ingredients and their rough weights; USDA turns
  * those into real calories and protein. The AI never states a calorie figure.
+ *
+ * Server-side only — this calls Gemini with the private key, so it's used from the
+ * analyze-dish API route, not imported by client components. See analyzeDishClient.ts
+ * for what the browser (including the static GitHub Pages build) actually calls.
  */
 export interface AnalyzeDishInput {
   text?: string;
@@ -42,7 +46,7 @@ export async function analyzeDish(body: AnalyzeDishInput): Promise<AnalyzeDishRe
 
   if (!hasGeminiKey()) {
     throw new NeedsKeyError(
-      "Reading a photo (or a free-text dish) needs a Gemini API key. Add NEXT_PUBLIC_GEMINI_API_KEY to .env.local, or type the ingredients with amounts like “200g chicken, 100g rice” to compute it with no key.",
+      "Reading a photo (or a free-text dish) needs a Gemini API key. Add GEMINI_API_KEY to .env.local, or type the ingredients with amounts like “200g chicken, 100g rice” to compute it with no key.",
     );
   }
 

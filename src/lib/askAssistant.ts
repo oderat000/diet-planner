@@ -32,7 +32,7 @@ export async function askAssistant(question: string, context?: AskContext): Prom
   if (!q) throw new Error("Ask a question first.");
   if (!hasGeminiKey()) {
     throw new NeedsKeyError(
-      "The assistant needs a Gemini API key. Add NEXT_PUBLIC_GEMINI_API_KEY to .env.local to enable it.",
+      "The assistant needs a Gemini API key. Add GEMINI_API_KEY to .env.local to enable it.",
     );
   }
 

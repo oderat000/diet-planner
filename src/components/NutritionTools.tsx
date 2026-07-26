@@ -13,8 +13,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import SendIcon from "@mui/icons-material/Send";
-import { AnalyzeDishResult, analyzeDish } from "@/lib/analyzeDish";
-import { AskContext, askAssistant } from "@/lib/askAssistant";
+import type { AnalyzeDishResult } from "@/lib/analyzeDish";
+import type { AskContext } from "@/lib/askAssistant";
+import { analyzeDish, askAssistant } from "@/lib/aiClient";
 
 export type { AskContext };
 
