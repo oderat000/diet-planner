@@ -13,6 +13,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import { addPlan, getActivePlan, loadStore, todayKey } from "@/lib/storage";
+import { generateDietPlan } from "@/lib/dietPlan";
 import {
   MAX_MEALS_PER_DAY,
   MIN_MEALS_PER_DAY,
@@ -70,14 +71,7 @@ export default function CreatePlan() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/generate-diet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? `Server error (${res.status})`);
-      const plan = body as DietPlan;
+      const plan: DietPlan = await generateDietPlan(form);
 
       // Save as a new plan in this device's library and make it active.
       addPlan(form, plan, [{ date: todayKey(), weightKg: form.weightKg }]);

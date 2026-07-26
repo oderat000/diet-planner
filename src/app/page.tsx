@@ -33,6 +33,7 @@ import StatTile from "@/components/StatTile";
 import WeightChart from "@/components/WeightChart";
 import Preview from "@/app/preview/page";
 import { buildGroceryList, formatGrams } from "@/lib/grocery";
+import { rerollMeal } from "@/lib/dietPlan";
 import { useI18n } from "@/lib/i18n";
 import { deriveGoal } from "@/lib/plan";
 import {
@@ -136,23 +137,17 @@ export default function Home() {
     setRerollLoading(true);
     setRerollError(null);
     try {
-      const res = await fetch("/api/reroll-meal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile: {
-            preferences: profile.preferences,
-            allergies: profile.allergies,
-            healthNotes: profile.healthNotes,
-          },
-          target: { calories: meal.calories, proteinG: meal.proteinG },
-          exclude: meal.name,
-          avoid,
-        }),
+      const newMeal = await rerollMeal({
+        profile: {
+          preferences: profile.preferences,
+          allergies: profile.allergies,
+          healthNotes: profile.healthNotes,
+        },
+        target: { calories: meal.calories, proteinG: meal.proteinG },
+        exclude: meal.name,
+        avoid,
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? `Server error (${res.status})`);
-      setSuggestion(body as Meal);
+      setSuggestion(newMeal);
       setSeen(avoid);
     } catch (e) {
       setRerollError(e instanceof Error ? e.message : "Something went wrong");

@@ -1,12 +1,15 @@
 /**
- * Minimal Google Gemini client (REST, no SDK).
+ * Minimal Google Gemini client (REST, no SDK), called directly from the browser.
  *
  * Used only for the optional AI add-ons — dish recognition and the Q&A assistant.
  * The core diet planner never touches this; it stays fully offline. If no key is set,
- * `hasGeminiKey()` is false and the routes disable those features cleanly rather than error.
+ * `hasGeminiKey()` is false and the callers disable those features cleanly rather than error.
  *
  * Free key (email only, no card): https://aistudio.google.com/apikey
- * Put it in .env.local as GEMINI_API_KEY.
+ * Put it in .env.local as NEXT_PUBLIC_GEMINI_API_KEY.
+ *
+ * This app is a static export with no server, so the key ships in the client bundle and is
+ * visible to anyone who inspects the page — only set it if you accept that exposure.
  *
  * Important boundary: Gemini is asked to *recognize and describe* (what ingredients are in
  * a dish, or to answer questions from provided plan data). It is never the source of a
@@ -15,12 +18,12 @@
 
 // "-latest" is a self-updating alias, so a fixed version doesn't quietly go stale
 // or get deprecated for new API keys the way "gemini-2.5-flash" already has.
-const MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+const MODEL = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-flash-latest";
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 const TIMEOUT_MS = 30_000;
 
 export function geminiKey(): string | null {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || null;
+  return process.env.NEXT_PUBLIC_GEMINI_API_KEY || null;
 }
 
 export function hasGeminiKey(): boolean {

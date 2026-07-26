@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { NoKeyError, generate, hasGeminiKey } from "@/lib/gemini";
+import { NeedsKeyError } from "@/lib/analyzeDish";
 
 /**
  * Answer a customer's question about their diet, grounded in their actual plan.
@@ -9,18 +9,15 @@ import { NoKeyError, generate, hasGeminiKey } from "@/lib/gemini";
  * something isn't in them, and not to give medical advice — so it stays anchored to real
  * data rather than inventing specifics about this user.
  */
-interface Body {
-  question: string;
-  context?: {
-    goal?: string;
-    dailyCalories?: number;
-    proteinG?: number;
-    carbsG?: number;
-    fatG?: number;
-    todayDay?: string;
-    todayMeals?: { name: string; calories: number; proteinG: number }[];
-    language?: string;
-  };
+export interface AskContext {
+  goal?: string;
+  dailyCalories?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  todayDay?: string;
+  todayMeals?: { name: string; calories: number; proteinG: number }[];
+  language?: string;
 }
 
 const SYSTEM =
@@ -30,43 +27,29 @@ const SYSTEM =
   "practical guidance; you are not a doctor, so for medical conditions advise seeing one. " +
   "Be concise — a few sentences. Reply in the user's language when one is given.";
 
-export async function POST(req: Request) {
-  const body = (await req.json()) as Body;
-  const question = (body.question ?? "").trim();
-
-  if (!question) {
-    return NextResponse.json({ error: "Ask a question first." }, { status: 400 });
-  }
+export async function askAssistant(question: string, context?: AskContext): Promise<string> {
+  const q = question.trim();
+  if (!q) throw new Error("Ask a question first.");
   if (!hasGeminiKey()) {
-    return NextResponse.json(
-      {
-        error:
-          "The assistant needs a Gemini API key. Add GEMINI_API_KEY to .env.local to enable it.",
-        needsKey: true,
-      },
-      { status: 400 },
+    throw new NeedsKeyError(
+      "The assistant needs a Gemini API key. Add NEXT_PUBLIC_GEMINI_API_KEY to .env.local to enable it.",
     );
   }
 
   try {
     const answer = await generate({
       system: SYSTEM,
-      prompt: buildPrompt(body),
+      prompt: buildPrompt(q, context),
       temperature: 0.4,
     });
-    return NextResponse.json({ answer: answer.trim() });
+    return answer.trim();
   } catch (err) {
-    if (err instanceof NoKeyError) {
-      return NextResponse.json({ error: "No Gemini API key configured.", needsKey: true }, { status: 400 });
-    }
-    const message = err instanceof Error ? err.message : "Could not answer right now";
-    console.warn("ask failed:", err);
-    return NextResponse.json({ error: message }, { status: 502 });
+    if (err instanceof NoKeyError) throw new NeedsKeyError("No Gemini API key configured.");
+    throw err;
   }
 }
 
-function buildPrompt(b: Body): string {
-  const c = b.context ?? {};
+function buildPrompt(question: string, c: AskContext = {}): string {
   const facts: string[] = [];
   if (c.goal) facts.push(`Goal: ${c.goal}.`);
   if (c.dailyCalories) facts.push(`Daily calorie target: ${c.dailyCalories} kcal.`);
@@ -83,7 +66,7 @@ function buildPrompt(b: Body): string {
   return [
     facts.length ? `PLAN FACTS:\n${facts.join("\n")}` : "PLAN FACTS: none provided.",
     c.language && c.language !== "en" ? `Answer in language code: ${c.language}.` : "",
-    `QUESTION: ${b.question}`,
+    `QUESTION: ${question}`,
   ]
     .filter(Boolean)
     .join("\n\n");

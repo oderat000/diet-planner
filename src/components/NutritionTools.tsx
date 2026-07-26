@@ -13,32 +13,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import SendIcon from "@mui/icons-material/Send";
+import { AnalyzeDishResult, analyzeDish } from "@/lib/analyzeDish";
+import { AskContext, askAssistant } from "@/lib/askAssistant";
 
-interface CostedIngredient {
-  name: string;
-  grams: number;
-  matched: boolean;
-  kcal: number;
-  proteinG: number;
-}
-interface DishResult {
-  dish: string;
-  ingredients: CostedIngredient[];
-  totals: { kcal: number; proteinG: number; carbsG: number; fatG: number };
-  coverage: number;
-  aiRecognized: boolean;
-}
+export type { AskContext };
 
-export interface AskContext {
-  goal?: string;
-  dailyCalories?: number;
-  proteinG?: number;
-  carbsG?: number;
-  fatG?: number;
-  todayDay?: string;
-  todayMeals?: { name: string; calories: number; proteinG: number }[];
-  language?: string;
-}
+type DishResult = AnalyzeDishResult;
 
 /** Downscale a chosen photo in the browser so the upload stays small and fast. */
 async function fileToImageInput(file: File): Promise<{ mimeType: string; dataBase64: string }> {
@@ -84,14 +64,8 @@ function DishChecker() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch("/api/analyze-dish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim() || undefined, image: image ?? undefined }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? `Error ${res.status}`);
-      setResult(body as DishResult);
+      const body = await analyzeDish({ text: text.trim() || undefined, image: image ?? undefined });
+      setResult(body);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -195,14 +169,8 @@ function Assistant({ context }: { context: AskContext }) {
     setError(null);
     setAnswer(null);
     try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: question.trim(), context }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? `Error ${res.status}`);
-      setAnswer(body.answer as string);
+      const answer = await askAssistant(question.trim(), context);
+      setAnswer(answer);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {

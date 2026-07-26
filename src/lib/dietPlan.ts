@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { DAY_NAMES, clampMeals, computeTargets } from "@/lib/plan";
 import { toMeal } from "@/lib/nutrition";
 import { buildPool, favoriteCuisines, pick } from "@/lib/select";
@@ -9,20 +8,11 @@ import { DayPlan, DietPlan, Meal, Profile, Targets } from "@/lib/types";
  * Builds a week from real, published recipes, costed against USDA's measured
  * nutrition data. No language model is involved: the calorie targets come from the
  * Mifflin-St Jeor equation, the food comes from a recipe catalogue, the numbers come
- * from a government database, and this route does the arithmetic that joins them.
+ * from a government database, and this function does the arithmetic that joins them.
  */
-export async function POST(req: Request) {
-  const profile = (await req.json()) as Profile;
+export async function generateDietPlan(profile: Profile): Promise<DietPlan> {
   const targets = computeTargets(profile);
-
-  try {
-    const plan = await buildPlan(profile, targets);
-    return NextResponse.json(plan);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not build a plan";
-    console.warn("Plan generation failed:", err);
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
+  return buildPlan(profile, targets);
 }
 
 /** Calorie share of the day for each meal slot, for any number of meals. */
@@ -160,4 +150,51 @@ function buildTips(t: Targets, coverage: number): string[] {
       coverage * 100,
     )}% of ingredients across this plan were matched to a USDA entry.`,
   ];
+}
+
+/**
+ * Swap one meal for another real one. Same pipeline as full plan generation:
+ * real published recipes, costed against USDA, fitted to the slot's calorie target.
+ */
+export interface RerollInput {
+  profile: Pick<Profile, "preferences" | "allergies" | "healthNotes">;
+  target: { calories: number; proteinG: number };
+  exclude?: string;
+  /** meals already shown this session — keep suggesting something new */
+  avoid?: string[];
+}
+
+/**
+ * An empty pool and a genuinely bad fit are different failures. Saying "no recipe fits"
+ * when the truth is "nothing survived your restrictions" would be a lie of omission.
+ */
+function noMealReason(poolSize: number): string {
+  if (poolSize === 0) {
+    return "No real recipes survived your preferences and allergies. Try relaxing them — we won't invent one to fill the gap.";
+  }
+  return "No other real recipe fits that calorie slot within your restrictions. We won't invent one to fill the gap.";
+}
+
+export async function rerollMeal(b: RerollInput): Promise<Meal> {
+  // buildPool only reads preferences/allergies; the rest of the profile is irrelevant here
+  const pool = await buildPool(b.profile as Profile);
+  const candidates = [...pool.main, ...pool.breakfast, ...pool.light];
+
+  const shown = new Set(
+    [b.exclude, ...(b.avoid ?? [])].filter(Boolean).map((n) => (n as string).toLowerCase()),
+  );
+  const fresh = candidates.filter((c) => !shown.has(c.recipe.name.toLowerCase()));
+
+  // match this one meal's own protein-per-calorie ask, not just its calories
+  const targetProteinDensity = b.target.calories > 0 ? b.target.proteinG / b.target.calories : undefined;
+  const chosen = pick(
+    fresh.length ? fresh : candidates,
+    b.target.calories,
+    new Set(),
+    undefined,
+    undefined,
+    targetProteinDensity,
+  );
+  if (!chosen) throw new Error(noMealReason(candidates.length));
+  return toMeal(chosen.costed, chosen.portions);
 }
