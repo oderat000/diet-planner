@@ -6,12 +6,16 @@ export async function POST(request: Request) {
     const key = process.env.GEMINI_API_KEY; // Hidden server environment variable
     
     const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
-    const MODEL = "gemini-1.5-flash";
+    const MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+
+    if (!key) {
+      return NextResponse.json({ error: "GEMINI_API_KEY is not set on the server" }, { status: 500 });
+    }
 
     // Secure server-to-server call to Google
-    const res = await fetch(`${ENDPOINT}/models/${MODEL}:generateContent?key=${key}`, {
+    const res = await fetch(`${ENDPOINT}/models/${MODEL}:generateContent`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify(body),
     });
 

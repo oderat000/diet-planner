@@ -79,9 +79,9 @@ export async function generate(opts: GenerateOptions): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${key}`, {
+    const res = await fetch(`${ENDPOINT}/${MODEL}:generateContent`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
