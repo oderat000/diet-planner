@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { corsHeaders } from "@/lib/cors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { AskContext, askAssistant } from "@/lib/askAssistant";
 import { NeedsKeyError } from "@/lib/analyzeDish";
 
@@ -13,6 +14,14 @@ interface Body {
  * build of the app calls this over CORS instead of talking to Gemini directly.
  */
 export async function POST(req: Request) {
+  const limit = await checkRateLimit(req);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many requests — try again shortly." },
+      { status: 429, headers: { ...corsHeaders(), "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   const body = (await req.json()) as Body;
   try {
     const answer = await askAssistant(body.question ?? "", body.context);
