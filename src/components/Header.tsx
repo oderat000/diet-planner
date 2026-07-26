@@ -7,6 +7,7 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ButtonBase from "@mui/material/ButtonBase";
+import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -56,6 +57,24 @@ export default function Header() {
           </ButtonBase>
         )}
         <Box sx={{ flexGrow: 1 }} />
+        <Button
+          component={Link}
+          href="/methodology"
+          color="inherit"
+          size="small"
+          sx={{ textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+        >
+          {t("nav.howItWorks")}
+        </Button>
+        <Button
+          component={Link}
+          href="/about"
+          color="inherit"
+          size="small"
+          sx={{ textTransform: "none", mr: 1, display: { xs: "none", sm: "inline-flex" } }}
+        >
+          {t("nav.faq")}
+        </Button>
         <LanguageSwitcher />
       </Toolbar>
     </AppBar>

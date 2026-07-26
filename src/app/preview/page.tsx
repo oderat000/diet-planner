@@ -128,6 +128,14 @@ export default function Preview() {
       <Button component={Link} href="/create" variant="contained" size="large">
         {t("landing.cta")}
       </Button>
+
+      {/* trust line */}
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", maxWidth: 480 }}>
+        {t("landing.trust")}{" "}
+        <Link href="/methodology" style={{ color: "inherit" }}>
+          {t("landing.learnMore")} →
+        </Link>
+      </Typography>
     </Box>
   );
 }

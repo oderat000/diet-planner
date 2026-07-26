@@ -26,7 +26,7 @@ export default function LanguageSwitcher() {
         endIcon={<KeyboardArrowDownIcon sx={{ fontSize: "1rem" }} />}
         sx={{ textTransform: "none", minWidth: 0, px: 1 }}
       >
-        <span style={{ fontSize: "1rem", lineHeight: 1 }}>{current.flag}</span>
+        <span className={`fi fi-${current.flagCountry}`} style={{ fontSize: "1rem", lineHeight: 1 }} />
         <span style={{ marginLeft: 5, fontSize: "0.7rem", opacity: 0.75 }}>{current.code}</span>
       </Button>
 
@@ -40,7 +40,9 @@ export default function LanguageSwitcher() {
               setAnchor(null);
             }}
           >
-            <ListItemIcon sx={{ fontSize: "1.25rem", minWidth: 34 }}>{l.flag}</ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 34 }}>
+              <span className={`fi fi-${l.flagCountry}`} style={{ fontSize: "1.25rem" }} />
+            </ListItemIcon>
             <ListItemText>{l.label}</ListItemText>
             {l.code === lang && <CheckIcon fontSize="small" sx={{ ml: 1, opacity: 0.7 }} />}
           </MenuItem>

@@ -26,18 +26,18 @@ export interface Language {
   code: string;
   /** endonym — the language's name in itself */
   label: string;
-  /** flag of a country that speaks it */
-  flag: string;
+  /** ISO 3166-1 alpha-2 code (lowercase) of a country that speaks it, for flag-icons */
+  flagCountry: string;
 }
 
 export const LANGUAGES: Language[] = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-  { code: "it", label: "Italiano", flag: "🇮🇹" },
-  { code: "uk", label: "Українська", flag: "🇺🇦" },
-  { code: "pl", label: "Polski", flag: "🇵🇱" },
+  { code: "en", label: "English", flagCountry: "gb" },
+  { code: "es", label: "Español", flagCountry: "es" },
+  { code: "fr", label: "Français", flagCountry: "fr" },
+  { code: "de", label: "Deutsch", flagCountry: "de" },
+  { code: "it", label: "Italiano", flagCountry: "it" },
+  { code: "uk", label: "Українська", flagCountry: "ua" },
+  { code: "pl", label: "Polski", flagCountry: "pl" },
 ];
 
 type Dict = Record<string, string>;

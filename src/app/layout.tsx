@@ -1,13 +1,34 @@
 import type { Metadata } from "next";
+import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import ThemeRegistry from "@/components/ThemeRegistry";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { I18nProvider } from "@/lib/i18n";
+import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 
+const description =
+  "Build a free personal 7-day diet plan from real, published recipes — with USDA-sourced nutrition data, daily meal tracking, and a weight progress chart. No account, no invented numbers.";
+
 export const metadata: Metadata = {
-  title: "Diet Planner",
-  description: "Personalized diet plans from real recipes, with progress tracking",
+  metadataBase: new URL("https://diet-planner.app"),
+  title: {
+    default: "Diet Planner — real-recipe meal plans, no invented data",
+    template: "%s · Diet Planner",
+  },
+  description,
+  openGraph: {
+    title: "Diet Planner — real-recipe meal plans, no invented data",
+    description,
+    type: "website",
+    siteName: "Diet Planner",
+  },
+  twitter: {
+    card: "summary",
+    title: "Diet Planner — real-recipe meal plans, no invented data",
+    description,
+  },
 };
 
 export default function RootLayout({
@@ -18,10 +39,13 @@ export default function RootLayout({
       <body>
         <ThemeRegistry>
           <I18nProvider>
-            <Header />
-            <Container maxWidth="md" sx={{ py: 4 }}>
-              {children}
-            </Container>
+            <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+              <Header />
+              <Container maxWidth="md" sx={{ py: 4, flexGrow: 1 }}>
+                {children}
+              </Container>
+              <Footer />
+            </Box>
           </I18nProvider>
         </ThemeRegistry>
       </body>
