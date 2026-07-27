@@ -14,7 +14,10 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n";
 import { getActivePlan, loadStore, STORE_EVENT } from "@/lib/storage";
 
-export default function Header() {
+/** Username when signed in, null when not, undefined when accounts aren't configured. */
+export type HeaderUser = { username: string } | null | undefined;
+
+export default function Header({ user }: { user?: HeaderUser }) {
   const pathname = usePathname();
   const t = useT();
   const [hasPlan, setHasPlan] = React.useState(false);
@@ -75,6 +78,17 @@ export default function Header() {
         >
           {t("nav.faq")}
         </Button>
+        {user !== undefined && (
+          <Button
+            component={Link}
+            href={user ? "/account" : "/login"}
+            color="inherit"
+            size="small"
+            sx={{ textTransform: "none", mr: 1 }}
+          >
+            {user ? user.username : "Sign in"}
+          </Button>
+        )}
         <LanguageSwitcher />
       </Toolbar>
     </AppBar>

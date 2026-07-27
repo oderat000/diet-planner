@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { corsHeaders } from "@/lib/cors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AnalyzeDishInput, NeedsKeyError, analyzeDish } from "@/lib/analyzeDish";
+import { auditLog } from "@/lib/auth/audit";
+import { optionalUser } from "@/lib/auth/guard";
 
 /**
  * Deployed on Vercel so GEMINI_API_KEY stays server-side. The static (GitHub Pages)
@@ -16,9 +18,20 @@ export async function POST(req: Request) {
     );
   }
 
+  // Optional, not required: the static GitHub Pages build calls this route cross-origin
+  // with no cookies, so demanding a session here would break that deployment. Signed-in
+  // requests get logged; anonymous ones still work.
+  const current = await optionalUser();
+
   const body = (await req.json()) as AnalyzeDishInput;
   try {
     const result = await analyzeDish(body);
+    await auditLog("dish.analyzed", {
+      userId: current?.user.id,
+      sessionId: current?.session.id,
+      // The photo and its contents are deliberately not recorded — see audit.ts.
+      metadata: { ingredients: result.ingredients.length, aiRecognized: result.aiRecognized },
+    });
     return NextResponse.json(result, { headers: corsHeaders() });
   } catch (err) {
     if (err instanceof NeedsKeyError) {
