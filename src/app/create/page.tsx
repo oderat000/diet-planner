@@ -12,7 +12,8 @@ import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import { addPlan, getActivePlan, loadStore, todayKey } from "@/lib/storage";
+import { addPlan, getActivePlan, todayKey } from "@/lib/storage";
+import { usePlanStore } from "@/lib/usePlanStore";
 import { generateDietPlan } from "@/lib/dietPlan";
 import {
   MAX_MEALS_PER_DAY,
@@ -41,18 +42,19 @@ const DEFAULT: Profile = {
 export default function CreatePlan() {
   const t = useT();
   const router = useRouter();
-  const [form, setForm] = React.useState<Profile>(DEFAULT);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    // Pre-fill from the active plan's profile, if any.
-    const active = getActivePlan(loadStore());
-    if (active) setForm({ ...DEFAULT, ...active.profile });
-  }, []);
+  // Pre-fill from the active plan's profile, if any. `edited` stays null until the user
+  // touches something, so the prefill is derived during render rather than pushed in by
+  // an effect — no cascading render, and the form is right on the first client paint.
+  const store = usePlanStore();
+  const [edited, setEdited] = React.useState<Profile | null>(null);
+  const active = getActivePlan(store);
+  const form = edited ?? (active ? { ...DEFAULT, ...active.profile } : DEFAULT);
 
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
+    setEdited({ ...form, [key]: value });
 
   const num =
     (key: keyof Profile) => (e: React.ChangeEvent<HTMLInputElement>) => {

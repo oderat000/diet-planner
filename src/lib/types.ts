@@ -50,7 +50,8 @@ export interface MealIngredient {
   display: string;
 }
 
-export interface Meal {
+/** Fields every meal carries, whichever era of the schema produced it. */
+interface MealBase {
   name: string;
   description: string;
   calories: number;
@@ -58,8 +59,6 @@ export interface Meal {
   carbsG?: number;
   fatG?: number;
 
-  /** ingredients with resolved weights — the researched shape */
-  mealIngredients?: MealIngredient[];
   /** preparation steps, as published */
   steps?: string[];
 
@@ -72,17 +71,41 @@ export interface Meal {
   origin?: string;
   /** dish category, as published (TheMealDB `category`), e.g. "Pasta" */
   category?: string;
+}
 
+/**
+ * A meal built by the current pipeline: a real published recipe, costed ingredient by
+ * ingredient against USDA. The provenance fields are required here — that is the whole
+ * point of the variant, and a caller reading `mealIngredients` must first establish it
+ * is looking at one of these.
+ */
+export interface ResearchedMeal extends MealBase {
+  dataSource: "researched";
+  /** ingredients with resolved weights; `grams: null` where the measure was too vague */
+  mealIngredients: MealIngredient[];
   /** how much of one recipe's serving this portion is */
-  portions?: number;
+  portions: number;
   /** share of ingredients we could trace to a USDA entry, 0..1 */
-  nutritionCoverage?: number;
-  /** "researched" = real recipe + USDA arithmetic. Legacy plans have no value here. */
-  dataSource?: "researched";
+  nutritionCoverage: number;
+}
 
+/**
+ * A meal from a plan saved before the researched pipeline existed. Display only: it
+ * carries a flat ingredient list with no weights and nothing to trace the numbers to.
+ */
+export interface LegacyMeal extends MealBase {
+  dataSource?: undefined;
   /** legacy shape from plans saved before real data — display only */
   ingredients?: string[];
 }
+
+/**
+ * Discriminated on `dataSource` so the two eras can't be confused. Before this was a
+ * union, every provenance field was optional on one interface and components read them
+ * with `?.` — which silently produced "no ingredients" for a researched meal whose data
+ * was actually there, and hid that legacy meals have no coverage figure at all.
+ */
+export type Meal = ResearchedMeal | LegacyMeal;
 
 export interface DayPlan {
   day: string;

@@ -112,4 +112,16 @@ export default{
   "about.faq.data2.a":
     "Yes — delete a plan from the plan switcher, or clear your browser's site data to remove everything at once.",
   "about.cta": "Create my plan",
+
+  "error.title": "Something went wrong",
+  "error.body":
+    "This part of the page failed to load. Your saved plans are stored on this device and haven't been affected.",
+  "error.detail": "Details",
+  "error.retry": "Try again",
+  "error.home": "Back to my plan",
+
+  "notFound.title": "Page not found",
+  "notFound.body": "That page doesn't exist. It may have moved, or the link may be wrong.",
+  "notFound.home": "Back to my plan",
+  "notFound.create": "Create a plan",
 };

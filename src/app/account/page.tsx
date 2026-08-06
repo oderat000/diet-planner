@@ -24,8 +24,6 @@ const EVENT_LABEL: Record<ActivityEvent, string> = {
   "auth.logout": "Signed out",
   "auth.logout_all": "Signed out of all devices",
   "auth.rate_limited": "Rate limit reached",
-  "plan.generated": "Generated a diet plan",
-  "plan.viewed": "Viewed a plan",
   "dish.analyzed": "Analysed a dish photo",
   "assistant.asked": "Asked the assistant",
   "account.viewed_activity": "Viewed account activity",

@@ -118,7 +118,10 @@ async function buildPlan(p: Profile, t: Targets): Promise<DietPlan> {
 
   const allMeals = days.flatMap((d) => d.meals);
   const coverage =
-    allMeals.reduce((s, m) => s + (m.nutritionCoverage ?? 0), 0) / allMeals.length;
+    allMeals.reduce(
+      (s, m) => s + (m.dataSource === "researched" ? m.nutritionCoverage : 0),
+      0,
+    ) / allMeals.length;
 
   return {
     dailyCalories: t.dailyCalories,

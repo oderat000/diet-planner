@@ -52,4 +52,77 @@ export default {
     "Con tus pesos crearemos un plan para {goal}: unas {kcal} kcal y {protein} g de proteína al día.",
   "create.generate": "Generar plan",
   "create.generating": "Creando tu plan…",
+
+  "nav.howItWorks": "Cómo funciona",
+  "nav.faq": "Acerca de y preguntas frecuentes",
+
+  "footer.tagline": "Recetas reales, datos nutricionales reales, ningún número inventado.",
+  "footer.howItWorks": "Cómo funciona",
+  "footer.about": "Acerca de y preguntas frecuentes",
+  "footer.app": "Abrir la aplicación",
+  "footer.rights":
+    "Diet Planner. Datos de comidas y nutrición obtenidos de recetas publicadas y de USDA FoodData Central.",
+
+  "landing.trust":
+    "Construido sobre recetas reales publicadas y datos nutricionales de USDA FoodData Central: nada en este sitio está inventado.",
+  "landing.learnMore": "Cómo funciona",
+
+  "methodology.title": "Cómo funciona Diet Planner",
+  "methodology.subtitle":
+    "Cada número y cada receta de este sitio son reales y rastreables hasta una fuente publicada. La única tarea de la aplicación es ordenar y calcular, nunca inventar.",
+  "methodology.recipes.title": "Las recetas son reales, no generadas",
+  "methodology.recipes.text":
+    "Las comidas provienen de recetas realmente publicadas, no de texto inventado por una IA. Conservamos la lista de ingredientes y las cantidades originales tal como las escribió la fuente.",
+  "methodology.nutrition.title": "Los datos nutricionales son de USDA FoodData Central",
+  "methodology.nutrition.text":
+    "Las calorías, proteínas, carbohidratos y grasas se calculan asociando cada ingrediente a la base de datos USDA FoodData Central y escalando según las cantidades reales de la receta: el mismo conjunto de datos públicos que usan los dietistas. Viene incluido en la aplicación, así que no hace falta clave de API ni cuenta, y funciona sin conexión.",
+  "methodology.math.title": "Lo único que hace la IA es aritmética",
+  "methodology.math.text":
+    "Tus objetivos diarios de calorías y proteínas se calculan con fórmulas estándar publicadas (Mifflin-St Jeor para el metabolismo basal, ajustada por el nivel de actividad). Nada de tus objetivos se adivina: es la misma fórmula que usaría la calculadora de un dietista.",
+  "methodology.honesty.title": "Cuando faltan datos, lo decimos",
+  "methodology.honesty.text":
+    "Algunas cantidades de las recetas están escritas de forma vaga por la fuente («un chorrito», «al gusto») y no se pueden pesar. En lugar de inventar un número, la lista de la compra muestra el texto original en vez de una cantidad en gramos fabricada.",
+  "methodology.addons.title": "Los complementos de IA opcionales están claramente separados",
+  "methodology.addons.text":
+    "El planificador principal no necesita IA y funciona totalmente sin conexión. Dos funciones opcionales —un verificador nutricional por foto del plato y un asistente de preguntas— usan la API Gemini de Google y se marcan como estimaciones generadas por IA, nunca mezcladas con los datos del plan.",
+  "methodology.privacy.title": "Nada sale de tu dispositivo",
+  "methodology.privacy.text":
+    "Tu perfil, tu plan y tu registro de peso se guardan solo en el almacenamiento local de tu navegador. No hay cuenta ni base de datos en un servidor.",
+  "methodology.cta": "Crear mi plan",
+
+  "about.title": "Acerca de y preguntas frecuentes",
+  "about.subtitle":
+    "Diet Planner es una herramienta gratuita que crea un plan de comidas personal de 7 días a partir de recetas reales y datos nutricionales reales: sin cuenta, sin suscripción y sin anuncios.",
+  "about.faq.cost.q": "¿Es gratis?",
+  "about.faq.cost.a":
+    "Sí. No hay cuenta, suscripción ni pago en ninguna parte de la aplicación.",
+  "about.faq.data.q": "¿De dónde vienen los datos nutricionales?",
+  "about.faq.account.q": "¿Necesito registrarme?",
+  "about.faq.account.a":
+    "No. Tu plan, tu perfil y tu registro de peso se guardan solo en el almacenamiento local de tu navegador; no se envía nada a un servidor ni a una cuenta.",
+  "about.faq.medical.q": "¿Es esto consejo médico o dietético?",
+  "about.faq.medical.a":
+    "No. Diet Planner calcula objetivos de calorías y proteínas con fórmulas públicas estándar, pero no sustituye el consejo de un médico o de un dietista titulado, especialmente si tienes una afección que requiere una dieta controlada.",
+  "about.faq.ai.q": "¿La IA escribe las recetas o los datos nutricionales?",
+  "about.faq.ai.a":
+    "No. Las recetas y las cifras nutricionales provienen de fuentes reales publicadas; la aplicación solo las ordena y las calcula. Dos complementos opcionales (el verificador por foto y el asistente de preguntas) sí usan IA, y están claramente identificados donde aparecen.",
+  "about.faq.offline.q": "¿Funciona sin conexión a internet?",
+  "about.faq.offline.a":
+    "El generador de planes, el seguimiento y la lista de la compra funcionan totalmente sin conexión: los datos nutricionales vienen incluidos. Solo los dos complementos de IA opcionales necesitan conexión.",
+  "about.faq.data2.q": "¿Puedo borrar mis datos?",
+  "about.faq.data2.a":
+    "Sí: elimina un plan desde el selector de planes, o borra los datos del sitio en tu navegador para quitarlo todo de una vez.",
+  "about.cta": "Crear mi plan",
+
+  "error.title": "Algo ha salido mal",
+  "error.body":
+    "Esta parte de la página no se ha podido cargar. Tus planes guardados están en este dispositivo y no se han visto afectados.",
+  "error.detail": "Detalles",
+  "error.retry": "Reintentar",
+  "error.home": "Volver a mi plan",
+
+  "notFound.title": "Página no encontrada",
+  "notFound.body": "Esa página no existe. Puede que se haya movido o que el enlace sea incorrecto.",
+  "notFound.home": "Volver a mi plan",
+  "notFound.create": "Crear un plan",
 };

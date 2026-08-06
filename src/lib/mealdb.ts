@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TheMealDB — a catalogue of real, published recipes. Each entry carries the
  * publisher's own photo, a YouTube video of it being cooked, and a link back to
  * the original source (BBC Good Food and similar).
@@ -29,7 +29,18 @@ export interface Recipe {
   sourceUrl: string | null;
 }
 
-async function get(path: string): Promise<any> {
+/**
+ * TheMealDB's envelope. Every endpoint returns one of these two keys holding rows of
+ * flat string fields (`strMeal`, `strIngredient1`, …), or null when nothing matched.
+ * Rows stay loosely typed because the ingredient columns are numbered, not named.
+ */
+type MealDbRow = Record<string, string | null>;
+interface MealDbResponse {
+  meals?: MealDbRow[] | null;
+  categories?: MealDbRow[] | null;
+}
+
+async function get(path: string): Promise<MealDbResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -99,7 +110,7 @@ export function idsInCategory(category: string): Promise<string[]> {
   if (!hit) {
     hit = (async () => {
       const data = await get(`filter.php?c=${encodeURIComponent(category)}`);
-      return (data?.meals ?? []).map((m: any) => String(m.idMeal));
+      return (data?.meals ?? []).map((m: MealDbRow) => String(m.idMeal));
     })();
     hit.catch(() => categoryCache.delete(category));
     categoryCache.set(category, hit);
@@ -115,7 +126,7 @@ export function idsInArea(area: string): Promise<string[]> {
   if (!hit) {
     hit = (async () => {
       const data = await get(`filter.php?a=${encodeURIComponent(area)}`);
-      return (data?.meals ?? []).map((m: any) => String(m.idMeal));
+      return (data?.meals ?? []).map((m: MealDbRow) => String(m.idMeal));
     })();
     hit.catch(() => areaCache.delete(area));
     areaCache.set(area, hit);
@@ -125,5 +136,6 @@ export function idsInArea(area: string): Promise<string[]> {
 
 export async function categories(): Promise<string[]> {
   const data = await get("categories.php");
-  return (data?.categories ?? []).map((c: any) => String(c.strCategory));
+  return (data?.categories ?? []).map((c: MealDbRow) => String(c.strCategory));
 }
+

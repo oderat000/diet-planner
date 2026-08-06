@@ -6,10 +6,11 @@
  * composition, and sum. No model is asked what a meal contains.
  */
 
+import { formatGrams } from "./format";
 import { Recipe } from "./mealdb";
 import { toGrams } from "./measures";
 import { Nutrition, lookupAll } from "./usda";
-import { Macros, Meal, MealIngredient } from "./types";
+import { Macros, MealIngredient, ResearchedMeal } from "./types";
 
 /**
  * TheMealDB doesn't publish serving counts. Its recipes are overwhelmingly
@@ -97,16 +98,8 @@ export function portionFor(c: CostedRecipe, targetKcal: number): number | null {
   return Math.round(raw * 10) / 10;
 }
 
-function formatGrams(g: number): string {
-  return g >= 1000
-    ? `${(g / 1000).toFixed(1)} kg`
-    : g >= 10
-      ? `${Math.round(g)} g`
-      : `${g.toFixed(1)} g`;
-}
-
 /** Build the meal we actually show, with quantities scaled to the user's portion. */
-export function toMeal(c: CostedRecipe, portions: number): Meal {
+export function toMeal(c: CostedRecipe, portions: number): ResearchedMeal {
   const { recipe, perServing, grams } = c;
   // whole recipe feeds ASSUMED_SERVINGS; the user eats `portions` of those servings
   const scale = portions / ASSUMED_SERVINGS;

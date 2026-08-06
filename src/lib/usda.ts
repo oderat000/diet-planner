@@ -8,8 +8,6 @@
  * limit. The numbers are the same measurements the USDA API would return.
  */
 
-import table from "@/data/usda-foods.json";
-
 /** One USDA food, per 100 g. Keys are short because 7.8k of them ship to the server. */
 interface Row {
   /** description as USDA publishes it, e.g. "Onions, raw" */
@@ -62,21 +60,51 @@ function tokenize(text: string): string[] {
 
 interface Entry {
   row: Row;
-  tokens: Set<string>;
   /** how many words the description has — fewer means a more generic entry */
   size: number;
 }
 
-let index: Entry[] | null = null;
+interface Index {
+  entries: Entry[];
+  /** token -> indices of every entry whose description contains it */
+  byToken: Map<string, number[]>;
+}
 
-function getIndex(): Entry[] {
-  if (!index) {
-    index = (table as Row[]).map((row) => {
-      const tokens = new Set(tokenize(row.d));
-      return { row, tokens, size: tokens.size };
-    });
+/**
+ * The table is ~812 KB and the plan pipeline runs in the browser, so it is imported
+ * dynamically: the bundler splits it into its own chunk that is fetched the first time
+ * an ingredient is looked up, instead of being downloaded with the page.
+ *
+ * The *promise* is cached rather than the result, so concurrent first callers share one
+ * load rather than each starting their own.
+ */
+let indexPromise: Promise<Index> | null = null;
+
+function buildIndex(rows: Row[]): Index {
+  const entries: Entry[] = new Array(rows.length);
+  // Inverted index: without it every lookup scanned all 7.8k descriptions, and a week's
+  // plan does that once per ingredient across ~100 recipes.
+  const byToken = new Map<string, number[]>();
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const tokens = new Set(tokenize(row.d));
+    entries[i] = { row, size: tokens.size };
+    for (const token of tokens) {
+      const bucket = byToken.get(token);
+      if (bucket) bucket.push(i);
+      else byToken.set(token, [i]);
+    }
   }
-  return index;
+
+  return { entries, byToken };
+}
+
+async function getIndex(): Promise<Index> {
+  indexPromise ??= import("@/data/usda-foods.json").then((m) =>
+    buildIndex(m.default as Row[]),
+  );
+  return indexPromise;
 }
 
 /**
@@ -87,20 +115,32 @@ function getIndex(): Entry[] {
  * a shorter chicken-only one, while bare "flour" prefers plain wheat flour over some
  * long-winded fortified variant.
  */
-function search(name: string): Nutrition | null {
+async function search(name: string): Promise<Nutrition | null> {
   const query = tokenize(normalizeQuery(name) || name);
   if (query.length === 0) return null;
+
+  const { entries, byToken } = await getIndex();
+
+  // Only entries sharing at least one token can score above zero, so gather those
+  // instead of walking the whole table. Iterating the query (not a deduplicated set)
+  // keeps a repeated query word counting twice, as the original scan did.
+  const matches = new Map<number, number>();
+  for (const token of query) {
+    const bucket = byToken.get(token);
+    if (!bucket) continue;
+    for (const i of bucket) matches.set(i, (matches.get(i) ?? 0) + 1);
+  }
+  if (matches.size === 0) return null;
 
   let best: Row | null = null;
   let bestScore = -Infinity;
   let bestCompleteness = 0;
 
-  for (const entry of getIndex()) {
-    let matched = 0;
-    for (const token of query) if (entry.tokens.has(token)) matched++;
-    if (matched === 0) continue;
-
-    const completeness = matched / query.length;
+  // Ascending table order, so an exact score tie resolves to the same entry the
+  // original full scan would have picked.
+  for (const i of [...matches.keys()].sort((a, b) => a - b)) {
+    const entry = entries[i];
+    const completeness = matches.get(i)! / query.length;
     // completeness dominates; description length only breaks ties between equal matches
     const score = completeness * 100 - entry.size;
     if (score > bestScore) {
@@ -129,7 +169,7 @@ export async function lookupIngredient(name: string): Promise<Nutrition | null> 
   if (!key) return null;
   if (cache.has(key)) return cache.get(key) ?? null;
 
-  const nutrition = search(name);
+  const nutrition = await search(name);
   cache.set(key, nutrition);
   return nutrition;
 }

@@ -36,11 +36,29 @@ function fromLegacy(s: AppState): SavedPlan {
   };
 }
 
+/**
+ * A store written by an older version can parse cleanly and still be the wrong shape.
+ * Checking here means a bad blob becomes an empty library, not `undefined` deep inside
+ * a render.
+ */
+function isPlanStore(value: unknown): value is PlanStore {
+  if (typeof value !== "object" || value === null) return false;
+  const s = value as Partial<PlanStore>;
+  if (!Array.isArray(s.plans)) return false;
+  if (s.activeId !== null && typeof s.activeId !== "string") return false;
+  return s.plans.every(
+    (p) => typeof p?.id === "string" && typeof p?.plan === "object" && p.plan !== null,
+  );
+}
+
 export function loadStore(): PlanStore {
   if (typeof window === "undefined") return emptyStore();
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
-    if (raw) return JSON.parse(raw) as PlanStore;
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      return isPlanStore(parsed) ? parsed : emptyStore();
+    }
 
     // One-time migration from the old single-plan format.
     const legacy = window.localStorage.getItem(LEGACY_KEY);
@@ -63,6 +81,47 @@ export const STORE_EVENT = "planstore-change";
 export function saveStore(store: PlanStore) {
   window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
   window.dispatchEvent(new Event(STORE_EVENT));
+}
+
+/* ---------------------------------------------------------------------------
+ * React integration
+ *
+ * The store lives in localStorage, which React can't see. These three functions
+ * are the `useSyncExternalStore` contract, which is how a component reads external
+ * state without a hydration mismatch — the server renders the empty store, and React
+ * swaps in the real one after hydrating. Doing this in an effect instead caused a
+ * cascading re-render and a frame of blank screen.
+ * ------------------------------------------------------------------------- */
+
+/** Subscribes to changes from this tab (STORE_EVENT) and from other tabs (storage). */
+export function subscribeStore(onChange: () => void): () => void {
+  window.addEventListener(STORE_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(STORE_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+// useSyncExternalStore compares snapshots by identity and re-renders forever if a new
+// object comes back every call, so the parsed store is cached against its raw text.
+let cachedRaw: string | null = null;
+let cachedStore: PlanStore = emptyStore();
+
+export function storeSnapshot(): PlanStore {
+  const raw = window.localStorage.getItem(STORE_KEY);
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedStore = loadStore();
+  }
+  return cachedStore;
+}
+
+/** Must be referentially stable across calls, hence a module-level constant. */
+const SERVER_SNAPSHOT: PlanStore = { plans: [], activeId: null };
+
+export function serverStoreSnapshot(): PlanStore {
+  return SERVER_SNAPSHOT;
 }
 
 export function getActivePlan(store: PlanStore): SavedPlan | null {

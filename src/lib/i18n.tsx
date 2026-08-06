@@ -59,19 +59,39 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
   return template.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = React.useState("en");
+/** Fired on the window when the language changes, so every subscriber re-reads it. */
+const LANG_EVENT = "planlang-change";
 
-  React.useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && DICTS[saved]) setLangState(saved);
-  }, []);
+function subscribeLang(onChange: () => void): () => void {
+  window.addEventListener(LANG_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(LANG_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+/** Snapshots are plain strings, so identity comparison is safe without caching. */
+function langSnapshot(): string {
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+  return saved && DICTS[saved] ? saved : "en";
+}
+
+/** The server has no localStorage, so it always renders English and React swaps after. */
+function serverLangSnapshot(): string {
+  return "en";
+}
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  // Reading through useSyncExternalStore rather than an effect: localStorage is external
+  // state, and setting it in an effect caused a cascading render on every page load.
+  const lang = React.useSyncExternalStore(subscribeLang, langSnapshot, serverLangSnapshot);
 
   const setLang = React.useCallback((code: string) => {
     if (!DICTS[code]) return;
-    setLangState(code);
     localStorage.setItem(STORAGE_KEY, code);
     document.documentElement.lang = code;
+    window.dispatchEvent(new Event(LANG_EVENT));
   }, []);
 
   const t = React.useCallback(

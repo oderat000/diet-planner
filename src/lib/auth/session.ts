@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { keys, redis } from "./redis";
 import { hashIp, hashToken, randomToken } from "./crypto";
+import { clientIpFromHeaders } from "../clientIp";
 import { getUser } from "./users";
 import type { Session, User } from "./types";
 
@@ -19,8 +20,7 @@ const REFRESH_AFTER_SECONDS = 60 * 60 * 24 * 7;
 
 async function requestContext(): Promise<{ ipHash: string; userAgent: string }> {
   const h = await headers();
-  const forwarded = h.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : (h.get("x-real-ip") ?? "unknown");
+  const ip = clientIpFromHeaders((name) => h.get(name));
   return { ipHash: hashIp(ip), userAgent: (h.get("user-agent") ?? "unknown").slice(0, 256) };
 }
 

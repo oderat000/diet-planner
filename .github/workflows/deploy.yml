@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Runs against the complete tree, before anything is deleted for the static export.
+  # The Vercel deployment ships src/app/api, so those files must be linted and
+  # typechecked here — the Pages build alone would never look at them.
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,9 +28,31 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      # Static export can't ship API routes (they need a server), and the Gemini-backed
-      # ones live on Vercel instead — see .github/workflows note in README/AGENTS for setup.
-      - run: rm -rf src/app/api
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  build:
+    needs: verify
+    # Pull requests get the checks above but must not publish to Pages.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # `output: export` supports none of: route handlers that read the Request, Server
+      # Actions, cookies(), or dynamic routes without generateStaticParams. The API routes
+      # and the whole auth system use all four, so they are dropped from the static build
+      # and live on Vercel instead. The layout already hides the account UI when
+      # GITHUB_PAGES is set, so the remaining pages have nothing pointing at them.
+      #
+      # Without the auth directories this build fails outright on
+      # /verify-email/[token] — a dynamic route with no generateStaticParams.
+      - run: rm -rf src/app/api src/app/login src/app/signup src/app/account src/app/admin src/app/verify-email
       - run: npm ci
       - run: npm run build
         env:
@@ -40,6 +67,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

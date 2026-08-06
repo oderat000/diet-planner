@@ -140,9 +140,11 @@ export default function MealCard({
 }) {
   const [open, setOpen] = React.useState(false);
 
-  const ingredients = meal.mealIngredients ?? [];
+  const researched = meal.dataSource === "researched" ? meal : null;
+  const ingredients = researched?.mealIngredients ?? [];
   // plans saved before the switch to real data carry only the old string list
-  const legacy = !meal.mealIngredients && meal.ingredients?.length ? meal.ingredients : null;
+  const legacy =
+    meal.dataSource !== "researched" && meal.ingredients?.length ? meal.ingredients : null;
   const steps = meal.steps ?? [];
   const uncosted = ingredients.filter((i) => i.grams === null).length;
   const detailsId = `meal-details-${meal.name.replace(/\W+/g, "-")}`;
@@ -177,7 +179,9 @@ export default function MealCard({
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
             {meal.description}
-            {meal.portions && meal.portions !== 1 ? ` · ${meal.portions}× serving` : ""}
+            {researched && researched.portions !== 1
+              ? ` · ${researched.portions}× serving`
+              : ""}
           </Typography>
         </Box>
 
@@ -225,7 +229,7 @@ export default function MealCard({
               <>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                   Ingredients
-                  {meal.portions && meal.portions !== 1 && (
+                  {researched && researched.portions !== 1 && (
                     <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                       scaled to your portion
                     </Typography>

@@ -36,8 +36,8 @@ export type ActivityEvent =
   | "auth.logout"
   | "auth.logout_all"
   | "auth.rate_limited"
-  | "plan.generated"
-  | "plan.viewed"
+  // No plan.* events: plan generation runs entirely in the browser, so the server never
+  // sees it. Declaring events nothing can emit made the log look more complete than it is.
   | "dish.analyzed"
   | "assistant.asked"
   | "account.viewed_activity";

@@ -1,30 +1,52 @@
-import { NextResponse } from "next/server";
-import { corsHeaders } from "@/lib/cors";
-import { checkRateLimit } from "@/lib/rateLimit";
-import { AnalyzeDishInput, NeedsKeyError, analyzeDish } from "@/lib/analyzeDish";
+import {
+  BadRequestError,
+  asObject,
+  corsPreflight,
+  optionalString,
+  withApiGuards,
+} from "@/lib/apiGuard";
+import { AnalyzeDishInput, analyzeDish } from "@/lib/analyzeDish";
 import { auditLog } from "@/lib/auth/audit";
 import { optionalUser } from "@/lib/auth/guard";
+
+/** Roughly a 4 MB photo once base64 inflates it by a third. */
+const MAX_IMAGE_BASE64 = 5_500_000;
+const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+
+function parse(raw: unknown): AnalyzeDishInput {
+  const body = asObject(raw);
+  const text = optionalString(body.text, "text", 2000);
+
+  let image: AnalyzeDishInput["image"];
+  if (body.image !== undefined && body.image !== null) {
+    const img = asObject(body.image);
+    const mimeType = optionalString(img.mimeType, "image.mimeType", 100) ?? "";
+    const dataBase64 = optionalString(img.dataBase64, "image.dataBase64", MAX_IMAGE_BASE64);
+
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      throw new BadRequestError(`"image.mimeType" must be one of ${ALLOWED_MIME.join(", ")}.`);
+    }
+    if (!dataBase64) throw new BadRequestError('"image.dataBase64" is required with an image.');
+    image = { mimeType, dataBase64 };
+  }
+
+  if (!text?.trim() && !image) {
+    throw new BadRequestError("Provide a dish description or a photo.");
+  }
+  return { text, image };
+}
 
 /**
  * Deployed on Vercel so GEMINI_API_KEY stays server-side. The static (GitHub Pages)
  * build of the app calls this over CORS instead of talking to Gemini directly.
  */
 export async function POST(req: Request) {
-  const limit = await checkRateLimit(req);
-  if (!limit.ok) {
-    return NextResponse.json(
-      { error: "Too many requests — try again shortly." },
-      { status: 429, headers: { ...corsHeaders(), "Retry-After": String(limit.retryAfterSeconds) } },
-    );
-  }
+  return withApiGuards(req, parse, async (body) => {
+    // Optional, not required: the static GitHub Pages build calls this route cross-origin
+    // with no cookies, so demanding a session here would break that deployment. Signed-in
+    // requests get logged; anonymous ones still work.
+    const current = await optionalUser();
 
-  // Optional, not required: the static GitHub Pages build calls this route cross-origin
-  // with no cookies, so demanding a session here would break that deployment. Signed-in
-  // requests get logged; anonymous ones still work.
-  const current = await optionalUser();
-
-  const body = (await req.json()) as AnalyzeDishInput;
-  try {
     const result = await analyzeDish(body);
     await auditLog("dish.analyzed", {
       userId: current?.user.id,
@@ -32,20 +54,10 @@ export async function POST(req: Request) {
       // The photo and its contents are deliberately not recorded — see audit.ts.
       metadata: { ingredients: result.ingredients.length, aiRecognized: result.aiRecognized },
     });
-    return NextResponse.json(result, { headers: corsHeaders() });
-  } catch (err) {
-    if (err instanceof NeedsKeyError) {
-      return NextResponse.json(
-        { error: err.message, needsKey: true },
-        { status: 400, headers: corsHeaders() },
-      );
-    }
-    const message = err instanceof Error ? err.message : "Could not analyze the dish";
-    console.warn("analyze-dish failed:", err);
-    return NextResponse.json({ error: message }, { status: 502, headers: corsHeaders() });
-  }
+    return result;
+  });
 }
 
 export function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+  return corsPreflight();
 }

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 import { keys, redis } from "./redis";
 import { hashIp } from "./crypto";
+import { clientIpFromHeaders } from "../clientIp";
 import type { ActivityEvent, ActivityRecord } from "./types";
 
 /**
@@ -45,8 +46,7 @@ export async function auditLog(
 ): Promise<void> {
   try {
     const h = await headers();
-    const forwarded = h.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : (h.get("x-real-ip") ?? "unknown");
+    const ip = clientIpFromHeaders((name) => h.get(name));
 
     const record: ActivityRecord = {
       id: `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}`,

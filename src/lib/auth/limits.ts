@@ -2,6 +2,9 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import { redis } from "./redis";
 import { hashEmail } from "./crypto";
+import { clientIpFromHeaders, retryAfterSeconds, type LimitResult } from "../clientIp";
+
+export type { LimitResult };
 
 /**
  * Rate limits on the auth endpoints. Without these, the login form is an online password
@@ -33,18 +36,13 @@ function limiters() {
 
 export async function clientIp(): Promise<string> {
   const h = await headers();
-  const forwarded = h.get("x-forwarded-for");
-  // Vercel appends the true client IP; the leftmost entry is caller-controlled, so on
-  // Vercel prefer x-real-ip, which the platform sets itself.
-  return h.get("x-real-ip") ?? (forwarded ? forwarded.split(",")[0].trim() : "unknown");
+  return clientIpFromHeaders((name) => h.get(name));
 }
-
-export type LimitResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
 async function check(rl: Ratelimit, key: string): Promise<LimitResult> {
   const { success, reset } = await rl.limit(key);
   if (success) return { ok: true };
-  return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((reset - Date.now()) / 1000)) };
+  return { ok: false, retryAfterSeconds: retryAfterSeconds(reset) };
 }
 
 export async function limitLogin(email: string): Promise<LimitResult> {

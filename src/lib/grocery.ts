@@ -19,10 +19,6 @@ export interface GroceryItem {
   measures: string[];
 }
 
-export function formatGrams(g: number): string {
-  return g >= 1000 ? `${(g / 1000).toFixed(1)} kg` : `${Math.round(g)} g`;
-}
-
 /**
  * Publishers write the same ingredient both ways — "Bay Leaf" in one recipe, "Bay Leaves"
  * in the next. On a shopping list those are one line, not two, so group on a singularised
@@ -51,7 +47,9 @@ export function buildGroceryList(plan: DietPlan): GroceryItem[] {
 
   for (const day of plan.days) {
     for (const meal of day.meals) {
-      for (const ing of meal.mealIngredients ?? []) {
+      // legacy meals carry only a flat string list with no weights, so nothing to sum
+      if (meal.dataSource !== "researched") continue;
+      for (const ing of meal.mealIngredients) {
         const name = ing.name.trim();
         const key = groupKey(name);
         if (!key) continue;

@@ -7,9 +7,13 @@
  */
 
 import { canonicalCuisine } from "@/data/cuisines";
+import { mapWithLimit } from "./concurrent";
 import { Recipe, getRecipe, idsInArea, idsInCategory } from "./mealdb";
 import { CostedRecipe, costRecipes, isUsable, portionFor } from "./nutrition";
 import { Profile } from "./types";
+
+/** Simultaneous recipe fetches. Browsers cap per-host connections around here anyway. */
+const RECIPE_FETCH_CONCURRENCY = 6;
 
 /** TheMealDB's own categories. Dessert is excluded from meal planning. */
 const BREAKFAST_CATEGORIES = ["Breakfast"];
@@ -150,8 +154,13 @@ async function researchPool(p: Profile): Promise<CandidatePool> {
     ...shuffle(lightIds).slice(0, 20),
   ];
 
+  // ~100 ids, fetched a few at a time rather than all at once — this runs in the user's
+  // browser, and a hundred simultaneous requests to a free third-party API is neither
+  // faster nor polite.
   const recipes = (
-    await Promise.all([...new Set(wanted)].map((id) => getRecipe(id).catch(() => null)))
+    await mapWithLimit([...new Set(wanted)], RECIPE_FETCH_CONCURRENCY, (id) =>
+      getRecipe(id).catch(() => null),
+    )
   ).filter((r): r is Recipe => r !== null && isSafe(r, tokens, vegetarian));
 
   const costed = (await costRecipes(recipes)).filter(isUsable);

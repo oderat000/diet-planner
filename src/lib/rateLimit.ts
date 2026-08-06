@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { clientIpFromRequest, retryAfterSeconds, type LimitResult } from "./clientIp";
 
 /**
  * Per-IP cap on the Gemini-backed routes, so a scraper hammering the public endpoint
@@ -27,17 +28,10 @@ const ratelimit = redis
     })
   : null;
 
-/** Best-effort caller IP from the headers Vercel's edge network sets. */
-function clientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
-
-export async function checkRateLimit(req: Request): Promise<{ ok: true } | { ok: false; retryAfterSeconds: number }> {
+export async function checkRateLimit(req: Request): Promise<LimitResult> {
   if (!ratelimit) return { ok: true };
 
-  const { success, reset } = await ratelimit.limit(clientIp(req));
+  const { success, reset } = await ratelimit.limit(clientIpFromRequest(req));
   if (success) return { ok: true };
-  return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((reset - Date.now()) / 1000)) };
+  return { ok: false, retryAfterSeconds: retryAfterSeconds(reset) };
 }

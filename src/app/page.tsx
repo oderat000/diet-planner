@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -15,11 +14,6 @@ import Chip from "@mui/material/Chip";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
 import Tooltip from "@mui/material/Tooltip";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -27,55 +21,43 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ReplayIcon from "@mui/icons-material/Replay";
+import GroceryDialog from "@/components/GroceryDialog";
 import MealCard from "@/components/MealCard";
 import NutritionTools from "@/components/NutritionTools";
+import RerollDialog from "@/components/RerollDialog";
 import StatTile from "@/components/StatTile";
 import WeightChart from "@/components/WeightChart";
 import Preview from "@/app/preview/page";
-import { buildGroceryList, formatGrams } from "@/lib/grocery";
-import { rerollMeal } from "@/lib/dietPlan";
+import { buildGroceryList } from "@/lib/grocery";
 import { useI18n } from "@/lib/i18n";
-import { deriveGoal } from "@/lib/plan";
+import { checksForDay, dayProgress, planDayIndex, weightProgress } from "@/lib/progress";
 import {
   deletePlan,
   getActivePlan,
-  loadStore,
   renameActivePlan,
   setActivePlan,
   todayKey,
   updateActivePlan,
 } from "@/lib/storage";
-import { Meal, PlanStore } from "@/lib/types";
+import { usePlanStore } from "@/lib/usePlanStore";
+import { Meal } from "@/lib/types";
 
 export default function Home() {
-  const [store, setStore] = React.useState<PlanStore | null>(null);
-  const [loaded, setLoaded] = React.useState(false);
+  const store = usePlanStore();
   const [weightInput, setWeightInput] = React.useState("");
   const [dateInput, setDateInput] = React.useState(todayKey());
 
   // meal reroll dialog — any meal on any day of the week, not just today
   const [rerollFor, setRerollFor] = React.useState<{ day: number; meal: number } | null>(null);
-  const [suggestion, setSuggestion] = React.useState<Meal | null>(null);
-  const [seen, setSeen] = React.useState<string[]>([]);
-  const [rerollLoading, setRerollLoading] = React.useState(false);
-  const [rerollError, setRerollError] = React.useState<string | null>(null);
 
   // week view
   const [weekOpen, setWeekOpen] = React.useState(false);
   const [groceryOpen, setGroceryOpen] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
 
   const { lang } = useI18n();
 
-  React.useEffect(() => {
-    setStore(loadStore());
-    setLoaded(true);
-  }, []);
-
-  const commit = (next: PlanStore) => setStore(next);
-
-  if (!loaded || !store) return null;
-
+  // Every mutation below goes through a storage helper, which persists and broadcasts;
+  // usePlanStore is subscribed, so the re-render happens without threading state back.
   const active = getActivePlan(store);
 
   // No plan registered on this device yet → show the landing/preview.
@@ -83,31 +65,20 @@ export default function Home() {
 
   const { plan, profile, weights, checks } = active;
   const today = todayKey();
-  // plan day by weekday (Monday = 0)
-  const dayIdx = (new Date().getDay() + 6) % 7;
+  const dayIdx = planDayIndex();
   const dayPlan = plan.days[dayIdx];
-  const todayChecks =
-    checks[today] ?? new Array<boolean>(dayPlan.meals.length).fill(false);
+  const todayChecks = checksForDay(checks, today, dayPlan.meals.length);
 
-  const consumed = dayPlan.meals.reduce(
-    (sum, m, i) => sum + (todayChecks[i] ? m.calories : 0),
-    0,
+  const { consumed, pct } = dayProgress(dayPlan, todayChecks, plan.dailyCalories);
+  const { current: currentW, change, toGoal, goal, changeGood } = weightProgress(
+    weights,
+    profile,
   );
-  const pct = Math.min(100, Math.round((consumed / plan.dailyCalories) * 100));
-
-  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
-  const startW = sorted[0]?.weightKg ?? profile.weightKg;
-  const currentW = sorted[sorted.length - 1]?.weightKg ?? profile.weightKg;
-  const change = Number((currentW - startW).toFixed(1));
-  const toGoal = Number((currentW - profile.goalWeightKg).toFixed(1));
-  const goal = deriveGoal(profile);
-  const changeGood =
-    goal === "gain" ? change > 0 : goal === "lose" ? change < 0 : change === 0;
 
   const toggleMeal = (i: number) => {
     const next = [...todayChecks];
     next[i] = !next[i];
-    commit(updateActivePlan(store, { checks: { ...checks, [today]: next } }));
+    updateActivePlan(store, { checks: { ...checks, [today]: next } });
   };
 
   const logWeight = () => {
@@ -115,49 +86,17 @@ export default function Home() {
     if (!Number.isFinite(w) || w <= 0) return;
     const date = dateInput || today;
     const others = weights.filter((e) => e.date !== date);
-    commit(updateActivePlan(store, { weights: [...others, { date, weightKg: w }] }));
+    updateActivePlan(store, { weights: [...others, { date, weightKg: w }] });
     setWeightInput("");
   };
 
-  const openReroll = (day: number, meal: number) => {
-    setRerollFor({ day, meal });
-    setSuggestion(null);
-    setSeen([]);
-    setRerollError(null);
-  };
+  const openReroll = (day: number, meal: number) => setRerollFor({ day, meal });
 
   /** The meal the reroll dialog is currently working on, wherever in the week it sits. */
   const rerollTarget = rerollFor ? plan.days[rerollFor.day].meals[rerollFor.meal] : null;
 
-  const findAlternative = async () => {
-    if (!rerollTarget) return;
-    const meal = rerollTarget;
-    // remember every meal shown so each reroll returns something new
-    const avoid = suggestion ? [...seen, suggestion.name] : seen;
-    setRerollLoading(true);
-    setRerollError(null);
-    try {
-      const newMeal = await rerollMeal({
-        profile: {
-          preferences: profile.preferences,
-          allergies: profile.allergies,
-          healthNotes: profile.healthNotes,
-        },
-        target: { calories: meal.calories, proteinG: meal.proteinG },
-        exclude: meal.name,
-        avoid,
-      });
-      setSuggestion(newMeal);
-      setSeen(avoid);
-    } catch (e) {
-      setRerollError(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setRerollLoading(false);
-    }
-  };
-
-  const applyReroll = () => {
-    if (!rerollFor || !suggestion) return;
+  const applyReroll = (suggestion: Meal) => {
+    if (!rerollFor) return;
     const { day, meal: i } = rerollFor;
 
     const newDays = plan.days.map((d, di) =>
@@ -175,42 +114,20 @@ export default function Home() {
       nextChecks[today] = arr;
     }
 
-    commit(
-      updateActivePlan(store, { plan: { ...plan, days: newDays }, checks: nextChecks }),
-    );
+    updateActivePlan(store, { plan: { ...plan, days: newDays }, checks: nextChecks });
     setRerollFor(null);
   };
 
   const groceries = buildGroceryList(plan);
 
-  const copyGroceries = async () => {
-    const text = groceries
-      .map((item) => {
-        const qty =
-          item.grams !== null
-            ? formatGrams(item.grams) +
-              (item.measures.length ? ` + ${item.measures.join(", ")}` : "")
-            : item.measures.join(", ");
-        return qty ? `${item.name} — ${qty}` : item.name;
-      })
-      .join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard blocked (insecure context / denied) — leave the list on screen to copy by hand
-    }
-  };
-
   const rename = () => {
     const name = window.prompt("Rename this plan", active.name);
-    if (name && name.trim()) commit(renameActivePlan(store, name.trim()));
+    if (name && name.trim()) renameActivePlan(store, name.trim());
   };
 
   const remove = () => {
     if (window.confirm(`Delete "${active.name}"? This can't be undone.`)) {
-      commit(deletePlan(store, active.id));
+      deletePlan(store, active.id);
     }
   };
 
@@ -223,7 +140,7 @@ export default function Home() {
           size="small"
           label="Active plan"
           value={active.id}
-          onChange={(e) => commit(setActivePlan(store, e.target.value))}
+          onChange={(e) => setActivePlan(store, e.target.value)}
           sx={{ minWidth: 220, flexGrow: 1 }}
         >
           {store.plans.map((p) => (
@@ -257,7 +174,7 @@ export default function Home() {
           label="Current weight"
           value={`${currentW} kg`}
           delta={
-            sorted.length > 1
+            weights.length > 1
               ? { text: `${change > 0 ? "+" : ""}${change} kg vs start`, good: changeGood }
               : null
           }
@@ -439,152 +356,23 @@ export default function Home() {
         </Collapse>
       </Paper>
 
-      {/* meal reroll dialog */}
-      <Dialog open={rerollFor !== null} onClose={() => setRerollFor(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Swap this meal</DialogTitle>
-        <DialogContent>
-          {rerollFor && rerollTarget && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Find another real recipe to replace <b>{rerollTarget.name}</b> on{" "}
-              <b>{plan.days[rerollFor.day].day}</b>, at about {rerollTarget.calories} kcal.
-            </Typography>
-          )}
-          {rerollError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {rerollError}
-            </Alert>
-          )}
+      {/* keyed so reopening on a different meal starts with a clean suggestion */}
+      <RerollDialog
+        key={rerollFor ? `${rerollFor.day}-${rerollFor.meal}` : "none"}
+        open={rerollFor !== null}
+        target={rerollTarget}
+        dayName={rerollFor ? plan.days[rerollFor.day].day : ""}
+        profile={profile}
+        onClose={() => setRerollFor(null)}
+        onApply={applyReroll}
+      />
 
-          {suggestion && (
-            <Paper variant="outlined" sx={{ p: 2, mt: 2, display: "flex", gap: 2 }}>
-              {suggestion.imageUrl && (
-                <Box
-                  sx={{
-                    position: "relative",
-                    width: 72,
-                    height: 72,
-                    flexShrink: 0,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                  }}
-                >
-                  <Image
-                    src={suggestion.imageUrl}
-                    alt={suggestion.name}
-                    fill
-                    sizes="72px"
-                    style={{ objectFit: "cover" }}
-                  />
-                </Box>
-              )}
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {suggestion.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {suggestion.description}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {suggestion.calories} kcal · {suggestion.proteinG} g protein
-                </Typography>
-              </Box>
-            </Paper>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setRerollFor(null)}>Cancel</Button>
-          <Button
-            onClick={findAlternative}
-            disabled={rerollLoading}
-            startIcon={rerollLoading ? <CircularProgress size={16} color="inherit" /> : null}
-          >
-            {suggestion ? "Try another" : "Find alternative"}
-          </Button>
-          <Button variant="contained" onClick={applyReroll} disabled={!suggestion || rerollLoading}>
-            Use this meal
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* grocery list for the whole week */}
-      <Dialog
+      <GroceryDialog
         open={groceryOpen}
         onClose={() => setGroceryOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        scroll="paper"
-      >
-        <DialogTitle>Grocery list — the whole week</DialogTitle>
-        <DialogContent dividers>
-          {groceries.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              This plan has no ingredient data. Create a new plan to get a grocery list.
-            </Typography>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Everything the {plan.days.length}-day plan calls for, summed and scaled to your
-                portions — {groceries.length} items.
-              </Typography>
-              <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
-                {groceries.map((item) => (
-                  <Box
-                    key={item.name}
-                    component="li"
-                    sx={{
-                      display: "flex",
-                      alignItems: "baseline",
-                      gap: 1,
-                      py: 0.75,
-                      borderBottom: 1,
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }}>
-                      {item.name}
-                      <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        {item.meals} {item.meals === 1 ? "meal" : "meals"}
-                      </Typography>
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}
-                    >
-                      {item.grams !== null ? formatGrams(item.grams) : ""}
-                      {/* no weight: show what the publisher actually wrote, not a guess */}
-                      {item.measures.length > 0 && (
-                        <Typography
-                          component="span"
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ ml: item.grams !== null ? 1 : 0, fontWeight: 400 }}
-                        >
-                          {item.grams !== null ? "+ " : ""}
-                          {item.measures.join(", ")}
-                        </Typography>
-                      )}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2 }}>
-                Weights are the published quantities scaled to your portion. Items shown with a
-                measure instead of a weight were written too vaguely to weigh (&ldquo;a
-                splash&rdquo;, &ldquo;to taste&rdquo;) — we list the wording rather than invent a
-                number.
-              </Typography>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={copyGroceries} disabled={groceries.length === 0}>
-            {copied ? "Copied" : "Copy list"}
-          </Button>
-          <Button variant="contained" onClick={() => setGroceryOpen(false)}>
-            Done
-          </Button>
-        </DialogActions>
-      </Dialog>
+        groceries={groceries}
+        dayCount={plan.days.length}
+      />
     </Box>
   );
 }
