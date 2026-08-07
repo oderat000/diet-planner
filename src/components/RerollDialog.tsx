@@ -13,6 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import { rerollMeal } from "@/lib/dietPlan";
+import { useIsPhone } from "@/lib/useIsPhone";
 import type { Meal, Profile } from "@/lib/types";
 
 /**
@@ -41,6 +42,7 @@ export default function RerollDialog({
   const [seen, setSeen] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const phone = useIsPhone();
 
   const findAlternative = async () => {
     if (!target) return;
@@ -64,7 +66,22 @@ export default function RerollDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      // a centred card on a phone leaves the suggestion cramped against both edges
+      fullScreen={phone}
+      slotProps={{
+        paper: {
+          sx: {
+            pt: phone ? "env(safe-area-inset-top)" : 0,
+            pb: phone ? "env(safe-area-inset-bottom)" : 0,
+          },
+        },
+      }}
+    >
       <DialogTitle>Swap this meal</DialogTitle>
       <DialogContent>
         {target && (
@@ -115,7 +132,20 @@ export default function RerollDialog({
           </Paper>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      {/*
+        Three buttons don't fit one phone-width row, so they stack — and the primary
+        action goes on top, within thumb reach and in reading order.
+      */}
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          pb: 2,
+          flexDirection: { xs: "column-reverse", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          gap: { xs: 1, sm: 0 },
+          "& > :not(style) ~ :not(style)": { ml: { xs: 0, sm: 1 } },
+        }}
+      >
         <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={findAlternative}

@@ -132,7 +132,7 @@ export default function Home() {
   };
 
   return (
-    <Box sx={{ display: "grid", gap: 3 }}>
+    <Box sx={{ display: "grid", gap: { xs: 2, sm: 3 } }}>
       {/* plan switcher */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         <TextField
@@ -141,7 +141,9 @@ export default function Home() {
           label="Active plan"
           value={active.id}
           onChange={(e) => setActivePlan(store, e.target.value)}
-          sx={{ minWidth: 220, flexGrow: 1 }}
+          // 220px plus three controls overflows a 375px phone, so the select takes the
+          // whole first line there and the buttons wrap underneath
+          sx={{ minWidth: { xs: "100%", sm: 220 }, flexGrow: 1 }}
         >
           {store.plans.map((p) => (
             <MenuItem key={p.id} value={p.id}>
@@ -155,6 +157,7 @@ export default function Home() {
         <IconButton onClick={remove} aria-label="Delete plan">
           <DeleteOutlineIcon />
         </IconButton>
+        <Box sx={{ flexGrow: 1 }} />
         <Button component={Link} href="/create" variant="outlined" size="small" startIcon={<AddIcon />}>
           New plan
         </Button>
@@ -164,7 +167,7 @@ export default function Home() {
       <Box
         sx={{
           display: "grid",
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
           gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
         }}
       >
@@ -187,8 +190,10 @@ export default function Home() {
       </Box>
 
       {/* today's meals */}
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", mb: 1, gap: 1, flexWrap: "wrap" }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1 }}>
             Today — {dayPlan.day}
           </Typography>
@@ -243,7 +248,7 @@ export default function Home() {
       />
 
       {/* weight progress */}
-      <Paper variant="outlined" sx={{ p: 3 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
           Weight progress
         </Typography>
@@ -256,6 +261,7 @@ export default function Home() {
             value={dateInput}
             onChange={(e) => setDateInput(e.target.value)}
             slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: today } }}
+            sx={{ flex: "1 1 150px" }}
           />
           <TextField
             size="small"
@@ -264,8 +270,13 @@ export default function Home() {
             onChange={(e) => setWeightInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && logWeight()}
             slotProps={{ htmlInput: { inputMode: "decimal" } }}
+            sx={{ flex: "1 1 110px" }}
           />
-          <Button variant="contained" onClick={logWeight}>
+          <Button
+            variant="contained"
+            onClick={logWeight}
+            sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}
+          >
             Log weight
           </Button>
         </Box>

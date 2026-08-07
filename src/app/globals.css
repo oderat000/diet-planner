@@ -24,18 +24,22 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
 }
 
 html {
+  /*
+    Only the root gets overflow-x/overscroll-behavior. Putting either on <body> as well
+    makes body its own scroll container (a non-visible overflow on one axis forces the
+    other to `auto`), and `overscroll-behavior-y: none` then stops that dead container
+    from chaining the wheel up to the document — precision touchpads latch to the
+    innermost scroller, so the page simply refuses to scroll.
+  */
+  overflow-x: hidden;
+  /* stop the whole page rubber-banding behind the app when a list hits its end */
+  overscroll-behavior-y: none;
   /* iOS Safari enlarges text in landscape unless this is pinned */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-}
-
-body {
-  /* stop the whole page rubber-banding behind the app when a list hits its end */
-  overscroll-behavior-y: none;
 }
 
 /*

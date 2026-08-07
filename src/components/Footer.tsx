@@ -13,8 +13,17 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", mt: 6 }}>
-      <Container maxWidth="md" sx={{ py: 3 }}>
+    <Box
+      component="footer"
+      sx={{
+        borderTop: 1,
+        borderColor: "divider",
+        mt: { xs: 4, sm: 6 },
+        // keep the links clear of the iPhone home indicator
+        pb: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <Container maxWidth="md" sx={{ py: 3, px: { xs: 1.5, sm: 3 } }}>
         <Box
           sx={{
             display: "flex",

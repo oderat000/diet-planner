@@ -9,6 +9,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { formatGrams } from "@/lib/format";
+import { useIsPhone } from "@/lib/useIsPhone";
 import type { GroceryItem } from "@/lib/grocery";
 
 /**
@@ -27,6 +28,7 @@ export default function GroceryDialog({
   dayCount: number;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const phone = useIsPhone();
 
   const copy = async () => {
     const text = groceries
@@ -49,7 +51,24 @@ export default function GroceryDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" scroll="paper">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      scroll="paper"
+      // a week of groceries is a long list — on a phone it gets the whole screen, and
+      // stays readable while you walk round the shop
+      fullScreen={phone}
+      slotProps={{
+        paper: {
+          sx: {
+            pt: phone ? "env(safe-area-inset-top)" : 0,
+            pb: phone ? "env(safe-area-inset-bottom)" : 0,
+          },
+        },
+      }}
+    >
       <DialogTitle>Grocery list — the whole week</DialogTitle>
       <DialogContent dividers>
         {groceries.length === 0 ? (
@@ -121,7 +140,7 @@ export default function GroceryDialog({
           </>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
         <Button onClick={copy} disabled={groceries.length === 0}>
           {copied ? "Copied" : "Copy list"}
         </Button>

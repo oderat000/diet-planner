@@ -4,13 +4,35 @@ import * as React from "react";
 import Typography from "@mui/material/Typography";
 import { WeightEntry } from "@/lib/types";
 
-const W = 640;
-const H = 260;
-const PAD = { top: 16, right: 56, bottom: 28, left: 44 };
+/**
+ * The chart is drawn in a viewBox whose width tracks the element's real CSS width, so
+ * one SVG unit is always one screen pixel and the labels render at their true size. A
+ * fixed 640-unit box stretched to a 340px phone would shrink 11px text to about 6px.
+ */
+const DEFAULT_W = 640;
+const NARROW = 420;
 
 interface Props {
   entries: WeightEntry[];
   goalKg: number;
+}
+
+/** The element's rendered width in CSS pixels, tracked as the viewport changes. */
+function useWidth(ref: React.RefObject<HTMLDivElement | null>, enabled: boolean) {
+  const [width, setWidth] = React.useState(DEFAULT_W);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!enabled || !el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const next = entry.contentRect.width;
+      if (next > 0) setWidth(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, enabled]);
+
+  return width;
 }
 
 function niceTicks(min: number, max: number, count = 4): number[] {
@@ -27,19 +49,35 @@ function niceTicks(min: number, max: number, count = 4): number[] {
 export default function WeightChart({ entries, goalKg }: Props) {
   const [hover, setHover] = React.useState<number | null>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
 
   const data = React.useMemo(
     () => [...entries].sort((a, b) => a.date.localeCompare(b.date)),
     [entries],
   );
 
-  if (data.length < 2) {
+  const enough = data.length >= 2;
+  const measured = useWidth(wrapRef, enough);
+
+  if (!enough) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: "center" }}>
         Log your weight on at least two days to see the progress chart.
       </Typography>
     );
   }
+
+  const W = Math.max(280, Math.round(measured));
+  const narrow = W < NARROW;
+  const H = narrow ? 200 : 260;
+  // On a phone the "Goal 75" label can't have a 56px gutter to itself — it moves inside
+  // the plot, sitting just above its own line instead.
+  const PAD = {
+    top: 16,
+    right: narrow ? 10 : 56,
+    bottom: 28,
+    left: narrow ? 34 : 44,
+  };
 
   const xs = data.map((d) => new Date(d.date + "T00:00:00").getTime());
   const ys = data.map((d) => d.weightKg);
@@ -57,7 +95,7 @@ export default function WeightChart({ entries, goalKg }: Props) {
     .map((d, i) => `${i === 0 ? "M" : "L"}${xTo(xs[i]).toFixed(1)},${yTo(d.weightKg).toFixed(1)}`)
     .join(" ");
 
-  const ticks = niceTicks(yMin, yMax);
+  const ticks = niceTicks(yMin, yMax, narrow ? 3 : 4);
   const last = data.length - 1;
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -85,7 +123,7 @@ export default function WeightChart({ entries, goalKg }: Props) {
   const hoverEntry = hover !== null ? data[hover] : null;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -128,8 +166,9 @@ export default function WeightChart({ entries, goalKg }: Props) {
           strokeWidth={1}
         />
         <text
-          x={W - PAD.right + 6}
-          y={yTo(goalKg) + 4}
+          x={narrow ? W - PAD.right : W - PAD.right + 6}
+          y={narrow ? yTo(goalKg) - 5 : yTo(goalKg) + 4}
+          textAnchor={narrow ? "end" : "start"}
           fontSize={11}
           fill="var(--viz-ink-muted)"
         >
@@ -174,9 +213,11 @@ export default function WeightChart({ entries, goalKg }: Props) {
           stroke="var(--viz-surface)"
           strokeWidth={2}
         />
+        {/* the end value sits right of the dot, but flips left when there's no gutter */}
         <text
-          x={xTo(xs[last]) + 8}
+          x={narrow ? xTo(xs[last]) - 8 : xTo(xs[last]) + 8}
           y={yTo(ys[last]) - 8}
+          textAnchor={narrow ? "end" : "start"}
           fontSize={12}
           fontWeight={600}
           fill="var(--viz-ink)"
@@ -202,7 +243,9 @@ export default function WeightChart({ entries, goalKg }: Props) {
         <div
           style={{
             position: "absolute",
-            left: `${(xTo(xs[hover!]) / W) * 100}%`,
+            // clamped so a tooltip near either end stays inside the card instead of
+            // being clipped — noticeable at phone widths, where the chart is narrow
+            left: `${Math.min(88, Math.max(12, (xTo(xs[hover!]) / W) * 100))}%`,
             top: 0,
             transform: "translate(-50%, -4px)",
             background: "var(--viz-surface)",

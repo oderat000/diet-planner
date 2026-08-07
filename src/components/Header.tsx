@@ -42,9 +42,6 @@ export default function Header({ user }: { user?: HeaderUser }) {
     };
   }, [pathname]);
 
-  // navigating away should never leave the drawer covering the new page
-  React.useEffect(() => setMenuOpen(false), [pathname]);
-
   // The preview/landing is shown on /preview, and on / when no plan exists yet.
   // The logo belongs to the main app, so hide it while the preview is showing.
   const onPreview = pathname === "/preview" || (pathname === "/" && !hasPlan);

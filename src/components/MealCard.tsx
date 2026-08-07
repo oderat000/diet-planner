@@ -156,7 +156,17 @@ export default function MealCard({
         holds a checkbox and two icon buttons. Nesting buttons is invalid HTML and
         breaks hydration, so the row is a plain div with its own expand control.
       */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1, pr: 1.5 }}>
+      <Box
+        sx={{
+          display: "flex",
+          // on a phone the name wraps to two lines, so the controls align to the top
+          // of the row rather than drifting to its vertical middle
+          alignItems: { xs: "flex-start", sm: "center" },
+          gap: { xs: 0.5, sm: 1.5 },
+          p: 1,
+          pr: { xs: 0.5, sm: 1.5 },
+        }}
+      >
         <Checkbox
           checked={eaten}
           onChange={onToggle}
@@ -168,6 +178,7 @@ export default function MealCard({
             <Typography
               sx={{
                 fontWeight: 600,
+                minWidth: 0,
                 textDecoration: eaten ? "line-through" : "none",
                 color: eaten ? "text.disabled" : "text.primary",
               }}
@@ -183,39 +194,63 @@ export default function MealCard({
               ? ` · ${researched.portions}× serving`
               : ""}
           </Typography>
+          {/*
+            Phones have no room for the macros as a third column, so they sit under the
+            description instead of being squeezed against the buttons.
+          */}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: { xs: "block", sm: "none" }, mt: 0.5, fontWeight: 500 }}
+          >
+            {meal.calories} kcal · {meal.proteinG} g protein
+          </Typography>
         </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ whiteSpace: "nowrap", display: { xs: "none", sm: "block" } }}
+        >
           {meal.calories} kcal · {meal.proteinG} g protein
         </Typography>
 
-        <Tooltip title="Swap this meal">
-          <IconButton size="small" onClick={onSwap} aria-label={`Swap ${meal.name}`}>
-            <ReplayIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        {/* stacked on phones: two 40px targets side by side would crowd the title */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            flexShrink: 0,
+          }}
+        >
+          <Tooltip title="Swap this meal">
+            <IconButton size="small" onClick={onSwap} aria-label={`Swap ${meal.name}`}>
+              <ReplayIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-        <Tooltip title={open ? "Hide recipe" : "Show recipe"}>
-          <IconButton
-            size="small"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls={detailsId}
-            aria-label={`${open ? "Hide" : "Show"} recipe for ${meal.name}`}
-          >
-            <ExpandMoreIcon
-              fontSize="small"
-              sx={{
-                transition: "transform 150ms",
-                transform: open ? "rotate(180deg)" : "none",
-              }}
-            />
-          </IconButton>
-        </Tooltip>
+          <Tooltip title={open ? "Hide recipe" : "Show recipe"}>
+            <IconButton
+              size="small"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls={detailsId}
+              aria-label={`${open ? "Hide" : "Show"} recipe for ${meal.name}`}
+            >
+              <ExpandMoreIcon
+                fontSize="small"
+                sx={{
+                  transition: "transform 150ms",
+                  transform: open ? "rotate(180deg)" : "none",
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       <Collapse in={open} unmountOnExit>
-        <Box id={detailsId} sx={{ px: 2, pb: 2 }}>
+        <Box id={detailsId} sx={{ px: { xs: 1.5, sm: 2 }, pb: 2 }}>
         <Box
           sx={{
             display: "grid",
@@ -322,8 +357,18 @@ export default function MealCard({
           </Box>
         </Box>
 
-        {/* on narrow screens the right column is hidden — show the cuisine inline */}
+        {/*
+          On narrow screens the right column is hidden, so its contents move here.
+          The carbs/fat chips used to live only in that column, which meant a phone
+          never showed them at all.
+        */}
         <Box sx={{ display: { xs: "block", md: "none" }, mt: 2 }}>
+          {meal.carbsG !== undefined && meal.fatG !== undefined && (
+            <Box sx={{ display: "flex", gap: 0.5, mb: 1.5, flexWrap: "wrap" }}>
+              <Chip size="small" variant="outlined" label={`${meal.carbsG} g carbs`} />
+              <Chip size="small" variant="outlined" label={`${meal.fatG} g fat`} />
+            </Box>
+          )}
           <CuisineNote meal={meal} />
         </Box>
         </Box>

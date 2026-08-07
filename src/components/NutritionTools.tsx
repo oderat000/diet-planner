@@ -75,7 +75,7 @@ function DishChecker() {
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 3 }}>
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
         Check a dish you made
       </Typography>
@@ -180,7 +180,7 @@ function Assistant({ context }: { context: AskContext }) {
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 3 }}>
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
         Ask about your diet
       </Typography>
