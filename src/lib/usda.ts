@@ -70,6 +70,7 @@ interface Index {
   byToken: Map<string, number[]>;
 }
 
+
 /**
  * The table is ~812 KB and the plan pipeline runs in the browser, so it is imported
  * dynamically: the bundler splits it into its own chunk that is fetched the first time
@@ -114,6 +115,26 @@ async function getIndex(): Promise<Index> {
  * how generic the entry is. So "chicken stock" prefers an entry naming both words over
  * a shorter chicken-only one, while bare "flour" prefers plain wheat flour over some
  * long-winded fortified variant.
+ *
+ * KNOWN LIMITATION — see the "known matching weakness" block in usda.test.ts. For a
+ * one-word ingredient every entry containing it scores completeness 1.0, so the winner
+ * is decided by `-entry.size`: the *fewest words wins*. That reliably picks a short
+ * compound product over the generic whole food ("Crackers, milk" for milk, "Bread, egg"
+ * for egg), attaching a real number to the wrong food.
+ *
+ * The problem is wider than one-word ingredients. USDA also uses category-first naming
+ * ("Fish, cod, Atlantic, raw", "Nuts, almonds"), where the ingredient word is neither
+ * the first nor the last token, so it loses to any shorter entry that happens to
+ * contain it — "salmon" resolves to "Fish oil, salmon" at 902 kcal/100 g, and "oats"
+ * to "Oil, oat" at 884.
+ *
+ * Positional heuristics were tried and rejected: with three competing conventions
+ * (head-initial "Milk, sheep, fluid", head-final "Rice crackers", category-first
+ * "Fish, cod, ...") no rule about word position reaches the ingredient in all three,
+ * and each variant fixed some foods while breaking others.
+ *
+ * The fix that will work is a curated alias table mapping common recipe ingredient
+ * names to specific fdcIds, verified per entry against FoodData Central.
  */
 async function search(name: string): Promise<Nutrition | null> {
   const query = tokenize(normalizeQuery(name) || name);

@@ -26,3 +26,37 @@ body {
   max-width: 100vw;
   overflow-x: hidden;
 }
+
+html {
+  /* iOS Safari enlarges text in landscape unless this is pinned */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  /* stop the whole page rubber-banding behind the app when a list hits its end */
+  overscroll-behavior-y: none;
+}
+
+/*
+  iOS Safari zooms the viewport whenever a focused field's text is under 16px.
+  MUI's small inputs are 14px, so pin every field to 16px on phones — desktop keeps
+  the tighter type.
+*/
+@media (max-width: 599.95px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* grey flash on tap looks like a rendering bug on iOS; the ripple already gives feedback */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Long recipe names and ingredient lines must wrap rather than widen the page. */
+body {
+  overflow-wrap: break-word;
+}

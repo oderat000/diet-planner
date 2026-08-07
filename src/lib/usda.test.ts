@@ -103,6 +103,10 @@ describe("known matching weakness — shortest-description tie-break", () => {
    * These use `it.fails()`: they assert the behaviour we want and are expected to fail
    * today. When the scoring is fixed they will report "expected to fail but passed",
    * which is the signal to convert them into ordinary `it()` tests.
+   *
+   * See the KNOWN LIMITATION note in usda.ts for why positional heuristics don't fix
+   * this and what will. The cases below are a representative sample, not the full set —
+   * probing ~44 common recipe ingredients found roughly a dozen more.
    */
 
   it.fails("should resolve 'Milk' to a milk, not to milk crackers", async () => {
@@ -122,5 +126,29 @@ describe("known matching weakness — shortest-description tie-break", () => {
     const flour = await lookupIngredient("Plain Flour");
     // currently: "Potato flour" — a different food with a different macro profile
     expect(flour!.fdcDescription.toLowerCase()).toContain("wheat");
+  });
+
+  /**
+   * Category-first naming ("Fish, salmon, ...") puts the ingredient word in the middle,
+   * where no positional rule reaches it — so a short unrelated entry that happens to
+   * contain the word wins. These are the worst offenders found: an oil instead of a
+   * whole food is roughly a 4x calorie error.
+   */
+  it.fails("should resolve 'Salmon' to a fish, not to fish oil", async () => {
+    const salmon = await lookupIngredient("Salmon");
+    // currently: "Fish oil, salmon" at 902 kcal/100 g
+    expect(salmon!.kcal).toBeLessThan(300);
+  });
+
+  it.fails("should resolve 'Oats' to a grain, not to oat oil", async () => {
+    const oats = await lookupIngredient("Oats");
+    // currently: "Oil, oat" at 884 kcal/100 g
+    expect(oats!.kcal).toBeLessThan(450);
+  });
+
+  it.fails("should resolve 'Water' to water, not to water convolvulus", async () => {
+    const water = await lookupIngredient("Water");
+    // currently: "Water convolvulus,raw" — a leafy vegetable, at 19 kcal/100 g
+    expect(water!.kcal).toBe(0);
   });
 });

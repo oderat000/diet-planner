@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import ThemeRegistry from "@/components/ThemeRegistry";
@@ -13,7 +13,47 @@ import "./globals.css";
 const description =
   "Build a free personal 7-day diet plan from real, published recipes — with USDA-sourced nutrition data, daily meal tracking, and a weight progress chart. No account, no invented numbers.";
 
+// GitHub Pages serves the app under /diet-planner/, so asset hrefs written by hand here
+// need the same prefix next.config.ts applies to everything Next emits itself.
+const basePath = process.env.GITHUB_PAGES === "true" ? "/diet-planner" : "";
+
+/**
+ * `viewportFit: "cover"` lets the page paint under the iPhone notch and home indicator;
+ * the header and footer then claim that space back with env(safe-area-inset-*).
+ * `maximumScale` is deliberately left at the default so pinch-zoom keeps working —
+ * locking it out fails WCAG 1.4.4 and Apple's own accessibility review.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e9e6dd" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a19" },
+  ],
+};
+
 export const metadata: Metadata = {
+  applicationName: "Diet Planner",
+  manifest: `${basePath}/manifest.webmanifest`,
+  appleWebApp: {
+    capable: true,
+    title: "Diet Planner",
+    statusBarStyle: "default",
+  },
+  // iOS ignores the manifest's icons; it reads this link instead when adding to the home screen
+  icons: {
+    icon: [
+      { url: `${basePath}/icons/icon-192.png`, sizes: "192x192", type: "image/png" },
+      { url: `${basePath}/icons/icon-512.png`, sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: `${basePath}/icons/apple-touch-icon.png`, sizes: "180x180" }],
+  },
+  formatDetection: {
+    // iOS otherwise turns "1800 kcal" and dates into blue tappable phone links
+    telephone: false,
+    date: false,
+  },
   metadataBase: new URL("https://diet-planner.app"),
   title: {
     default: "Diet Planner — real-recipe meal plans, no invented data",
@@ -56,7 +96,15 @@ export default async function RootLayout({
           <I18nProvider>
             <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
               <Header user={user} />
-              <Container maxWidth="md" sx={{ py: 4, flexGrow: 1 }}>
+              <Container
+                maxWidth="md"
+                sx={{
+                  py: { xs: 2, sm: 4 },
+                  // phones give up 32px of a 375px screen to the default gutters
+                  px: { xs: 1.5, sm: 3 },
+                  flexGrow: 1,
+                }}
+              >
                 {children}
               </Container>
               <Footer />

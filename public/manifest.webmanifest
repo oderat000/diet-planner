@@ -1,0 +1,22 @@
+{
+  "name": "Diet Planner — real-recipe meal plans",
+  "short_name": "Diet Planner",
+  "description": "A personal 7-day diet plan from real, published recipes, with USDA-sourced nutrition, meal tracking and a weight chart.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#e9e6dd",
+  "theme_color": "#e9e6dd",
+  "categories": ["health", "food", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
