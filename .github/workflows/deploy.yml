@@ -50,9 +50,10 @@ jobs:
       # and live on Vercel instead. The layout already hides the account UI when
       # GITHUB_PAGES is set, so the remaining pages have nothing pointing at them.
       #
-      # Without the auth directories this build fails outright on
+      # Without the auth directories this build fails outright on dynamic token routes.
       # /verify-email/[token] — a dynamic route with no generateStaticParams.
-      - run: rm -rf src/app/api src/app/login src/app/signup src/app/account src/app/admin src/app/verify-email
+      # /reset-password/[token] has the same export limitation.
+      - run: rm -rf src/app/api src/app/login src/app/signup src/app/account src/app/admin src/app/forgot-password src/app/reset-password src/app/verify-email
       - run: npm ci
       - run: npm run build
         env:
