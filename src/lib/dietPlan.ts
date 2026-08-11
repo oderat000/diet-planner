@@ -51,6 +51,7 @@ async function buildPlan(p: Profile, t: Targets): Promise<DietPlan> {
       .map((a) => canonicalCuisine(a))
       .filter((a): a is string => a !== null),
   );
+  const cuisinePreferenceWeight = p.localDishPreference === "mostly-local" ? 2.2 : 0.8;
   const days: DayPlan[] = [];
   let unfilled = 0;
 
@@ -90,7 +91,15 @@ async function buildPlan(p: Profile, t: Targets): Promise<DietPlan> {
 
       let chosen: ReturnType<typeof pick> = null;
       for (const candidates of order) {
-        chosen = pick(candidates, targetKcal, usedIds, dayAreas, favored, targetProteinDensity);
+        chosen = pick(
+          candidates,
+          targetKcal,
+          usedIds,
+          dayAreas,
+          favored,
+          targetProteinDensity,
+          cuisinePreferenceWeight,
+        );
         if (chosen) break;
       }
       // No real recipe fits this slot. Leave it empty and say so — never pad the day

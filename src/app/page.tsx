@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -24,7 +25,6 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import GroceryDialog from "@/components/GroceryDialog";
 import MealCard from "@/components/MealCard";
 import NutritionTools from "@/components/NutritionTools";
-import RerollDialog from "@/components/RerollDialog";
 import StatTile from "@/components/StatTile";
 import WeightChart from "@/components/WeightChart";
 import Preview from "@/app/preview/page";
@@ -40,7 +40,6 @@ import {
   updateActivePlan,
 } from "@/lib/storage";
 import { usePlanStore } from "@/lib/usePlanStore";
-import { Meal } from "@/lib/types";
 
 export default function Home() {
   const store = usePlanStore();
@@ -48,7 +47,7 @@ export default function Home() {
   const [dateInput, setDateInput] = React.useState(todayKey());
 
   // meal reroll dialog — any meal on any day of the week, not just today
-  const [rerollFor, setRerollFor] = React.useState<{ day: number; meal: number } | null>(null);
+  const router = useRouter();
 
   // week view
   const [weekOpen, setWeekOpen] = React.useState(false);
@@ -90,32 +89,8 @@ export default function Home() {
     setWeightInput("");
   };
 
-  const openReroll = (day: number, meal: number) => setRerollFor({ day, meal });
-
-  /** The meal the reroll dialog is currently working on, wherever in the week it sits. */
-  const rerollTarget = rerollFor ? plan.days[rerollFor.day].meals[rerollFor.meal] : null;
-
-  const applyReroll = (suggestion: Meal) => {
-    if (!rerollFor) return;
-    const { day, meal: i } = rerollFor;
-
-    const newDays = plan.days.map((d, di) =>
-      di === day
-        ? { ...d, meals: d.meals.map((m, mi) => (mi === i ? suggestion : m)) }
-        : d,
-    );
-
-    // The swapped meal is a different dish, so it can't still count as eaten. Only
-    // today's ticks exist, so this only matters when the swap lands on today.
-    const nextChecks = { ...checks };
-    if (day === dayIdx && nextChecks[today]) {
-      const arr = [...nextChecks[today]];
-      arr[i] = false;
-      nextChecks[today] = arr;
-    }
-
-    updateActivePlan(store, { plan: { ...plan, days: newDays }, checks: nextChecks });
-    setRerollFor(null);
+  const openReroll = (day: number, meal: number) => {
+    router.push(`/menu?replaceDay=${day}&replaceMeal=${meal}`);
   };
 
   const groceries = buildGroceryList(plan);
@@ -334,7 +309,7 @@ export default function Home() {
                       color="text.secondary"
                       sx={{ flexGrow: 1, minWidth: 0 }}
                     >
-                      {m.name} — {m.calories} kcal, {m.proteinG} g protein
+                      {m.scheduledTime ? `${m.scheduledTime} · ` : ""}{m.name} — {m.calories} kcal, {m.proteinG} g protein
                     </Typography>
                     <Tooltip title="Swap this meal">
                       <IconButton
@@ -366,17 +341,6 @@ export default function Home() {
           </Box>
         </Collapse>
       </Paper>
-
-      {/* keyed so reopening on a different meal starts with a clean suggestion */}
-      <RerollDialog
-        key={rerollFor ? `${rerollFor.day}-${rerollFor.meal}` : "none"}
-        open={rerollFor !== null}
-        target={rerollTarget}
-        dayName={rerollFor ? plan.days[rerollFor.day].day : ""}
-        profile={profile}
-        onClose={() => setRerollFor(null)}
-        onApply={applyReroll}
-      />
 
       <GroceryDialog
         open={groceryOpen}

@@ -7,6 +7,7 @@
  */
 
 import { canonicalCuisine } from "@/data/cuisines";
+import { cuisineForCountry } from "@/lib/region";
 import { mapWithLimit } from "./concurrent";
 import { Recipe, getRecipe, idsInArea, idsInCategory } from "./mealdb";
 import { CostedRecipe, costRecipes, isUsable, portionFor } from "./nutrition";
@@ -58,7 +59,10 @@ export function excludedTokens(p: Profile): string[] {
 }
 
 export function favoriteCuisines(p: Profile): string[] {
-  return (p.favoriteCuisines ?? []).filter(Boolean);
+  const favorites = (p.favoriteCuisines ?? []).filter(Boolean);
+  const local = cuisineForCountry(p.homeCountry);
+  if (p.localDishPreference === "global" || !local) return favorites;
+  return [...new Set([local, ...favorites])];
 }
 
 /** A recipe is rejected if any ingredient matches an excluded token. Conservative by design. */
@@ -147,8 +151,9 @@ async function researchPool(p: Profile): Promise<CandidatePool> {
 
   // take a random slice so repeat generations don't produce the same week;
   // favourite-cuisine recipes are added on top so they have a real chance to appear
+  const favoriteLimit = p.localDishPreference === "mostly-local" ? 40 : 20;
   const wanted = [
-    ...shuffle(favoriteIds).slice(0, 20),
+    ...shuffle(favoriteIds).slice(0, favoriteLimit),
     ...shuffle(breakfastIds).slice(0, 18),
     ...shuffle(mainIds).slice(0, POOL_SIZE),
     ...shuffle(lightIds).slice(0, 20),
@@ -193,6 +198,8 @@ export function pick(
    * leaving the day's protein target far short (this is what "pick" used to do).
    */
   targetProteinDensity?: number,
+  /** strength of the favorite-cuisine reward; local-first plans use a larger nudge */
+  favoredWeight = 0.8,
 ): { costed: CostedRecipe; portions: number } | null {
   const options: { costed: CostedRecipe; portions: number; penalty: number }[] = [];
 
@@ -212,7 +219,7 @@ export function pick(
     const favored =
       favoredAreas && favoredAreas.size > 0
         ? favoredAreas.has(canonicalCuisine(c.recipe.area) ?? "")
-          ? -0.8
+          ? -favoredWeight
           : 0
         : 0;
     // protein density (g/kcal) is portion-invariant — scaling the serving scales both

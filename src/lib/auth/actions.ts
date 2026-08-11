@@ -2,22 +2,25 @@
 
 import { redirect } from "next/navigation";
 import { auditLog } from "./audit";
-import { burnPasswordTime, verifyPassword } from "./crypto";
-import { sendVerificationEmail } from "./email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
 import { limitEmailSend, limitLogin, limitSignup } from "./limits";
 import { getSession, createSession, destroyAllSessions, destroyCurrentSession } from "./session";
 import {
   createUser,
+  authenticateUser,
   findUserByEmail,
+  getUser,
   isBreachedPassword,
   markEmailVerified,
   recordLogin,
+  setUserPassword,
   usernameTaken,
   validateEmail,
   validatePassword,
   validateUsername,
 } from "./users";
 import { consumeVerificationToken, createVerificationToken } from "./verification";
+import { consumePasswordResetToken, createPasswordResetToken } from "./passwordReset";
 
 export type FormState = { error?: string; notice?: string };
 
@@ -128,16 +131,9 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: `Too many sign-in attempts. Try again in ${minutes(limit.retryAfterSeconds)}.` };
   }
 
-  const user = await findUserByEmail(email);
+  const user = await authenticateUser(email, password);
   if (!user) {
-    // Hash anyway so a missing account doesn't answer measurably faster than a wrong password.
-    await burnPasswordTime(password);
-    await auditLog("auth.login_failed", { metadata: { reason: "no-account" } });
-    return { error: generic };
-  }
-
-  if (!(await verifyPassword(user.passwordHash, password))) {
-    await auditLog("auth.login_failed", { userId: user.id, metadata: { reason: "bad-password" } });
+    await auditLog("auth.login_failed", { metadata: { reason: "invalid-credentials" } });
     return { error: generic };
   }
 
@@ -151,6 +147,53 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   await auditLog("auth.login", { userId: user.id, sessionId });
 
   redirect("/");
+}
+
+export async function requestPasswordResetAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const email = String(formData.get("email") ?? "");
+  if (validateEmail(email)) return { error: "Enter a valid email address." };
+
+  const limit = await limitEmailSend(email);
+  if (!limit.ok) {
+    return { error: `Too many emails requested. Try again in ${minutes(limit.retryAfterSeconds)}.` };
+  }
+
+  const user = await findUserByEmail(email);
+  if (user) {
+    await sendPasswordResetEmail(user.email, await createPasswordResetToken(user.id));
+    await auditLog("auth.password_reset_requested", { userId: user.id });
+  }
+  // Identical response for known and unknown addresses to prevent account discovery.
+  return { notice: "sent" };
+}
+
+export async function resetPasswordAction(
+  token: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("passwordConfirmation") ?? "");
+  const invalid = validatePassword(password);
+  if (invalid) return { error: invalid };
+  if (password !== confirmation) return { error: "Passwords do not match." };
+  if (await isBreachedPassword(password)) {
+    return { error: "That password appears in a known data breach. Please choose a different one." };
+  }
+
+  const userId = await consumePasswordResetToken(token);
+  if (!userId || !(await getUser(userId))) {
+    await auditLog("auth.password_reset_failed");
+    return { error: "That password reset link is invalid or has expired." };
+  }
+
+  await setUserPassword(userId, password);
+  await destroyAllSessions(userId);
+  await auditLog("auth.password_reset", { userId });
+  return { notice: "changed" };
 }
 
 export async function logoutAction(): Promise<void> {

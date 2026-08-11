@@ -23,7 +23,7 @@ export default function Footer() {
         pb: "env(safe-area-inset-bottom)",
       }}
     >
-      <Container maxWidth="md" sx={{ py: 3, px: { xs: 1.5, sm: 3 } }}>
+      <Container maxWidth="md" sx={{ pt: { xs: 4, sm: 5 }, pb: 3, px: { xs: 1.5, sm: 3 } }}>
         <Box
           sx={{
             display: "flex",
@@ -37,6 +37,9 @@ export default function Footer() {
             {t("footer.tagline")}
           </Typography>
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+            <MuiLink component={Link} href="/menu" variant="body2" color="text.secondary">
+              Menu
+            </MuiLink>
             <MuiLink component={Link} href="/methodology" variant="body2" color="text.secondary">
               {t("footer.howItWorks")}
             </MuiLink>

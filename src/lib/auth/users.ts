@@ -1,6 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { keys, redis } from "./redis";
-import { hashEmail, hashPassword, normaliseEmail } from "./crypto";
+import {
+  burnPasswordTime,
+  hashEmail,
+  hashPassword,
+  normaliseEmail,
+  verifyPassword,
+} from "./crypto";
 import type { PublicUser, User } from "./types";
 
 /** Names that would be confusing or impersonating if a user could claim them. */
@@ -68,7 +74,12 @@ export async function findUserByEmail(email: string): Promise<User | null> {
 }
 
 export async function getUser(id: string): Promise<User | null> {
-  const record = await redis().hgetall<Record<string, string>>(keys.user(id));
+  const record = await redis().hgetall<
+    Omit<User, "emailVerified" | "lastLoginAt"> & {
+      emailVerified: boolean | string;
+      lastLoginAt: string;
+    }
+  >(keys.user(id));
   if (!record || !record.id) return null;
   return {
     id: record.id,
@@ -76,7 +87,7 @@ export async function getUser(id: string): Promise<User | null> {
     email: record.email,
     emailHash: record.emailHash,
     passwordHash: record.passwordHash,
-    emailVerified: record.emailVerified === "true",
+    emailVerified: record.emailVerified === true || record.emailVerified === "true",
     createdAt: record.createdAt,
     lastLoginAt: record.lastLoginAt || null,
   };
@@ -131,6 +142,20 @@ export async function markEmailVerified(userId: string): Promise<void> {
 
 export async function recordLogin(userId: string): Promise<void> {
   await redis().hset(keys.user(userId), { lastLoginAt: new Date().toISOString() });
+}
+
+export async function setUserPassword(userId: string, password: string): Promise<void> {
+  await redis().hset(keys.user(userId), { passwordHash: await hashPassword(password) });
+}
+
+/** Performs the credential check shared by login and the end-to-end auth tests. */
+export async function authenticateUser(email: string, password: string): Promise<User | null> {
+  const user = await findUserByEmail(email);
+  if (!user) {
+    await burnPasswordTime(password);
+    return null;
+  }
+  return (await verifyPassword(user.passwordHash, password)) ? user : null;
 }
 
 /** Strips the password hash before a user object can reach a client component. */

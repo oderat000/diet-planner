@@ -39,6 +39,7 @@ export function redis(): Redis {
  *   session:<tokenHash>       hash   session record, TTL'd to its own expiry
  *   user:<id>:sessions        zset   session token hashes by expiry — "log out everywhere"
  *   verify:<tokenHash>        hash   pending email verification, 30 min TTL
+ *   reset:<tokenHash>         hash   pending password reset, 20 min TTL
  *   activity:user:<id>        zset   this user's events by timestamp
  *   activity:all              zset   every event by timestamp, for the admin view
  *   activity:event:<id>       string the event JSON itself
@@ -50,6 +51,7 @@ export const keys = {
   session: (tokenHash: string) => `session:${tokenHash}`,
   userSessions: (id: string) => `user:${id}:sessions`,
   verification: (tokenHash: string) => `verify:${tokenHash}`,
+  passwordReset: (tokenHash: string) => `reset:${tokenHash}`,
   activityUser: (id: string) => `activity:user:${id}`,
   activityAll: () => "activity:all",
   activityEvent: (eventId: string) => `activity:event:${eventId}`,

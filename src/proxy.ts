@@ -14,7 +14,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * polish; deleting those calls would expose data.
  */
 const PROTECTED = ["/create", "/preview", "/account"];
-const AUTH_PAGES = ["/login", "/signup"];
+const AUTH_PAGES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 // Note: `runtime` cannot be configured here — Proxy always runs on the Node.js runtime in v16.
 export const config = {

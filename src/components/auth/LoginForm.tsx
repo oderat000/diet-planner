@@ -46,6 +46,9 @@ export default function LoginForm() {
         <MuiLink component={Link} href="/verify-email" variant="body2" sx={{ textAlign: "center" }}>
           Need a new confirmation link?
         </MuiLink>
+        <MuiLink component={Link} href="/forgot-password" variant="body2" sx={{ textAlign: "center" }}>
+          Forgot your password?
+        </MuiLink>
       </Box>
     </AuthCard>
   );
