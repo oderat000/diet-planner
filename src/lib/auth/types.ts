@@ -36,6 +36,9 @@ export type ActivityEvent =
   | "auth.logout"
   | "auth.logout_all"
   | "auth.rate_limited"
+  | "auth.password_reset_requested"
+  | "auth.password_reset"
+  | "auth.password_reset_failed"
   // No plan.* events: plan generation runs entirely in the browser, so the server never
   // sees it. Declaring events nothing can emit made the log look more complete than it is.
   | "dish.analyzed"

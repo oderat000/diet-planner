@@ -7,6 +7,7 @@ export type Activity =
   | "very_active";
 /** Derived from current vs goal weight — never asked for directly. See deriveGoal(). */
 export type Goal = "lose" | "maintain" | "gain";
+export type LocalDishPreference = "mostly-local" | "balanced" | "global";
 
 export interface Profile {
   age: number;
@@ -21,6 +22,10 @@ export interface Profile {
   healthNotes?: string;
   /** cuisines the user enjoys, by TheMealDB area name; plans lean toward these */
   favoriteCuisines?: string[];
+  /** country selected in the footer's regional-food questionnaire */
+  homeCountry?: string;
+  /** whether the plan should strongly favor, mix, or ignore local cuisine */
+  localDishPreference?: LocalDishPreference;
   mealsPerDay: number;
 }
 
@@ -58,6 +63,8 @@ interface MealBase {
   proteinG: number;
   carbsG?: number;
   fatG?: number;
+  /** Optional time selected when a dish is scheduled from the menu (24-hour HH:mm). */
+  scheduledTime?: string;
 
   /** preparation steps, as published */
   steps?: string[];

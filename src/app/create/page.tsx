@@ -12,6 +12,7 @@ import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import RegionQuestionnaire from "@/components/RegionQuestionnaire";
 import { addPlan, getActivePlan, todayKey } from "@/lib/storage";
 import { usePlanStore } from "@/lib/usePlanStore";
 import { generateDietPlan } from "@/lib/dietPlan";
@@ -23,6 +24,13 @@ import {
 } from "@/lib/plan";
 import { SELECTABLE_CUISINES } from "@/data/cuisines";
 import { useT } from "@/lib/i18n";
+import {
+  cuisineForCountry,
+  regionPreferenceSnapshot,
+  serverRegionPreferenceSnapshot,
+  subscribeRegionPreference,
+  type RegionPreference,
+} from "@/lib/region";
 import { DietPlan, Profile } from "@/lib/types";
 
 const DEFAULT: Profile = {
@@ -51,7 +59,39 @@ export default function CreatePlan() {
   const store = usePlanStore();
   const [edited, setEdited] = React.useState<Profile | null>(null);
   const active = getActivePlan(store);
-  const form = edited ?? (active ? { ...DEFAULT, ...active.profile } : DEFAULT);
+  const regional = React.useSyncExternalStore(
+    subscribeRegionPreference,
+    regionPreferenceSnapshot,
+    serverRegionPreferenceSnapshot,
+  );
+  const localCuisine = cuisineForCountry(regional?.country);
+  const regionalDefault: Profile = regional
+    ? {
+      ...DEFAULT,
+      homeCountry: regional.country,
+      localDishPreference: regional.localDishPreference,
+      favoriteCuisines:
+        regional.localDishPreference !== "global" && localCuisine
+          ? [localCuisine]
+          : [],
+      }
+    : DEFAULT;
+  const form = edited ?? (active ? { ...DEFAULT, ...active.profile } : regionalDefault);
+
+  const applyRegionalPreference = (preference: RegionPreference) => {
+    const cuisine = cuisineForCountry(preference.country);
+    const favoriteCuisines =
+      preference.localDishPreference !== "global" && cuisine
+        ? Array.from(new Set([...(form.favoriteCuisines ?? []), cuisine]))
+        : form.favoriteCuisines;
+
+    setEdited({
+      ...form,
+      homeCountry: preference.country,
+      localDishPreference: preference.localDishPreference,
+      favoriteCuisines,
+    });
+  };
 
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) =>
     setEdited({ ...form, [key]: value });
@@ -92,6 +132,16 @@ export default function CreatePlan() {
       <Typography color="text.secondary" sx={{ mb: 3, textAlign: "center" }}>
         {t("create.subtitle")}
       </Typography>
+
+      <Box sx={{ mb: 3 }}>
+        <RegionQuestionnaire onSave={applyRegionalPreference} />
+      </Box>
+
+      {form.homeCountry && (
+        <Alert severity="success" variant="outlined" sx={{ mb: 3 }}>
+          Regional preference: {form.homeCountry}. This plan will {form.localDishPreference === "mostly-local" ? "strongly favor local dishes" : form.localDishPreference === "global" ? "explore global dishes" : "mix local and global dishes"}.
+        </Alert>
+      )}
 
       <Box
         sx={{

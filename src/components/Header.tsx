@@ -48,6 +48,7 @@ export default function Header({ user }: { user?: HeaderUser }) {
 
   const links: { href: string; label: string }[] = [
     { href: "/", label: t("footer.app") },
+    { href: "/menu", label: "Menu" },
     { href: "/methodology", label: t("nav.howItWorks") },
     { href: "/about", label: t("nav.faq") },
     ...(user !== undefined
@@ -88,6 +89,15 @@ export default function Header({ user }: { user?: HeaderUser }) {
 
         {/* wide screens: the links sit in the bar */}
         <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center" }}>
+          <Button
+            component={Link}
+            href="/menu"
+            color="inherit"
+            size="small"
+            sx={{ textTransform: "none" }}
+          >
+            Menu
+          </Button>
           <Button
             component={Link}
             href="/methodology"

@@ -57,3 +57,15 @@ export async function sendVerificationEmail(email: string, token: string): Promi
     `Confirm your email to finish creating your Diet Planner account:\n${link}\n\nThis link works once and expires in 30 minutes.`,
   );
 }
+
+export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
+  const link = `${await baseUrl()}/reset-password/${encodeURIComponent(token)}`;
+  await send(
+    email,
+    "Reset your Diet Planner password",
+    `<p>Someone requested a new password for your Diet Planner account.</p>
+     <p><a href="${link}">Choose a new password</a></p>
+     <p>This link works once and expires in 20 minutes. If you didn't request it, you can safely ignore this email.</p>`,
+    `Choose a new Diet Planner password:\n${link}\n\nThis link works once and expires in 20 minutes. If you didn't request it, ignore this email.`,
+  );
+}

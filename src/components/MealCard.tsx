@@ -189,7 +189,7 @@ export default function MealCard({
             <Photo meal={meal} width={56} height={40} />
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            {meal.description}
+            {meal.scheduledTime ? `${meal.scheduledTime} · ` : ""}{meal.description}
             {researched && researched.portions !== 1
               ? ` · ${researched.portions}× serving`
               : ""}
