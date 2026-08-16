@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // Static export only for the GitHub Pages build. The Gemini-backed API routes need a
   // server, so the default (Vercel) build stays a normal Next.js app and keeps them.
   ...(forGithubPages ? { output: "export" as const } : {}),
+  // Directory-style output makes direct GitHub Pages visits such as /login reliable.
+  trailingSlash: forGithubPages,
   basePath: repoBasePath,
   assetPrefix: repoBasePath,
   images: {

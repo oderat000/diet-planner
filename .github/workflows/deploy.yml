@@ -46,14 +46,17 @@ jobs:
           cache: npm
       # `output: export` supports none of: route handlers that read the Request, Server
       # Actions, cookies(), or dynamic routes without generateStaticParams. The API routes
-      # and the whole auth system use all four, so they are dropped from the static build
-      # and live on Vercel instead. The layout already hides the account UI when
-      # GITHUB_PAGES is set, so the remaining pages have nothing pointing at them.
+      # and the whole auth system use all four, so they cannot run on GitHub Pages.
+      # Keep static /login and /signup hand-off pages instead of publishing dead 404s;
+      # NEXT_PUBLIC_APP_URL sends users to the server-hosted deployment when configured.
       #
       # Without the auth directories this build fails outright on dynamic token routes.
       # /verify-email/[token] — a dynamic route with no generateStaticParams.
       # /reset-password/[token] has the same export limitation.
-      - run: rm -rf src/app/api src/app/login src/app/signup src/app/account src/app/admin src/app/forgot-password src/app/reset-password src/app/verify-email
+      - run: |
+          rm -rf src/app/api src/app/login src/app/signup src/app/account src/app/admin src/app/forgot-password src/app/reset-password src/app/verify-email
+          cp -R src/static-export/login src/app/login
+          cp -R src/static-export/signup src/app/signup
       - run: npm ci
       - run: npm run build
         env:
@@ -62,6 +65,9 @@ jobs:
           # Set this as an Actions repo *variable* (not secret — it ends up in the client
           # bundle regardless, it's just a URL). Leave unset to disable the AI add-ons.
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          # Origin of the full Next.js deployment (for example Vercel), without a
+          # trailing slash. Required before accounts can work from the Pages preview.
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

@@ -79,7 +79,10 @@ export const metadata: Metadata = {
  * the account link rather than the build failing.
  */
 async function headerUser(): Promise<HeaderUser> {
-  if (process.env.GITHUB_PAGES === "true" || !authConfigured) return undefined;
+  // Pages publishes static login/signup hand-off routes. Expose the sign-in link there
+  // so visitors reach an honest explanation instead of seeing no account UI at all.
+  if (process.env.GITHUB_PAGES === "true") return null;
+  if (!authConfigured) return undefined;
   const current = await optionalUser();
   return current ? { username: current.user.username } : null;
 }
